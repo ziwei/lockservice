@@ -21,8 +21,13 @@
 %%
 %% Local Functions
 %%
-start(Server) ->
-lock:acquire(self(), Server),
-receive lock -> ok end,
-lock:release(self(), Server),
-io:format("lock finished").
+start(0,Server) ->
+ 	ok;
+start(N,Server)->
+	lock:acquire(self(), Server),
+	%receive lock -> ok end,
+	%lock:release(self(), Server),
+
+	io:format("lock finished"),
+	start(N-1,Server).
+
