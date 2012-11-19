@@ -25,4 +25,5 @@ start(Server) ->
 lock:acquire(self(), Server),
 receive lock -> ok end,
 lock:release(self(), Server),
+lock:get_queue(Server),
 io:format("lock finished").
