@@ -4,7 +4,7 @@
 -module(lock).
 
 -behaviour(gen_server).
--export([acquire/2, release/2, get_queue/0]).
+-export([acquire/2, release/2, get_queue/1]).
 -export([start/0, start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 %%
 %% Include files
@@ -29,8 +29,8 @@ acquire (Client, Server) ->
     gen_server:call({?SERVER, Server}, {acquire, Client}).
 release (Client, Server) ->
     gen_server:call({?SERVER, Server}, {release, Client}).
-get_queue() -> 
-    gen_server:call(?SERVER, get_queue).
+get_queue(Server) -> 
+    gen_server:call({?SERVER, Server}, get_queue).
 %%
 %% Local Functions
 %%7
@@ -41,6 +41,7 @@ init([])->
     }}.
 
 handle_call(get_queue, _From, State) ->
+	io:format("Queue ~w", [State#state.queue]),
     {reply, State#state.queue, State};
 handle_call({acquire, Client}, _From, State) ->
 	io:format("handle acq"),
