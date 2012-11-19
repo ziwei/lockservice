@@ -26,9 +26,9 @@ start_link() ->
 	gen_server:start_link({local, ?SERVER}, ?MODULE,[],[]).
 acquire (Client, Server) ->
 	io:format("enter acq"), 	
-    gen_server:call(Server, {acquire, Client}).
+    gen_server:call({?SERVER, Server}, {acquire, Client}).
 release (Client, Server) ->
-    gen_server:call(Server, {release, Client}).
+    gen_server:call({?SERVER, Server}, {release, Client}).
 get_queue() -> 
     gen_server:call(?SERVER, get_queue).
 %%
