@@ -1,0 +1,3 @@
+-record (state, {
+    queue = undefined
+}).
