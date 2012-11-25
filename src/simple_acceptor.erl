@@ -19,6 +19,14 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, 
         terminate/2, code_change/3]).
 
+-export([
+	 start_link/0, 
+	 stop/0, 
+	 stop/1,
+	 prepare/2, 
+	 accept/3
+	]).
+
 
 %% ====================================================================
 %% External functions
@@ -53,6 +61,7 @@ accept(Acceptor, {Election,Round}, Value) ->
 init([]) ->
 	acceptor_statestore:init(),
     StartState = #state{},
+	io:format("Acceptor inited"),
     {ok, StartState}.
 
 handle_call({prepare, {ElectionId, Round}}, _From, State) ->

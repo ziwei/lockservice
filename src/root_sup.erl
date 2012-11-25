@@ -35,7 +35,6 @@ init([]) ->
     AcceptorSup = {acceptor_sup, {acceptor_sup, start_link, []},
                 permanent, infinity, supervisor, [acceptor_sup]},
     
-    % Lock Service
     LockService = {lock, {lock, start_link, []},
                               permanent, 2000, worker, [lock]},
 
@@ -43,4 +42,4 @@ init([]) ->
     RSM = {replica, {replica, start_link, [lock]},
            permanent, 2000, worker, [replica]},
     
-    {ok, {?SUPFLAGS, [GaolerService, AcceptorSup, LockService, RSM]}}.
+    {ok, {?SUPFLAGS, [GaolerService,LockService,AcceptorSup,RSM]}}.%GaolerService,LockService,AcceptorSup,RSM 

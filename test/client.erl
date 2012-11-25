@@ -10,7 +10,7 @@
 %%
 %% Exported Functions
 %%
--export([start/1]).
+-export([start/2]).
 
 %%
 %% API Functions
