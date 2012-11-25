@@ -35,7 +35,7 @@ get_queue(Server) ->
 %% Local Functions
 %%7
 init([])->
-	io:format("enter init"),
+	io:format("Lock init"),
 	{ok, #state{
         queue = queue:new()
     }}.

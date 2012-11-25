@@ -72,6 +72,9 @@ init([]) ->
     % ping nodes from configuration
     Nodes = proplists:get_value(nodes, InitialState#state.configuration, []),
     [spawn(fun() -> net_adm:ping(Node) end) || Node <- Nodes],
+	
+	io:format("Gaoler inited"),
+	
     {ok, InitialState}.
 
 handle_call(replicas, _From, State) ->
