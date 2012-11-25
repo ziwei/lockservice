@@ -2,7 +2,7 @@
 %% @doc @todo Add description to simple_proposer.
 
 
--module(proposer).
+-module(simple_proposer).
 -behaviour(gen_fsm).
 -include_lib("proposer_state.hrl").
 -include_lib("accepted_record.hrl").
@@ -28,6 +28,7 @@
 	 handle_info/3, 
 	 terminate/3, 
 	 code_change/4]).
+
 
 -define(SERVER, ?MODULE).
 -define(MAJORITY, 3).
@@ -58,10 +59,7 @@ deliver_accept(Proposer, AcceptorReply) ->
 
 init([Election, Proposal, ReplyPid]) ->
     Round = 1,
-	spawn(fun() -> 
-        send_accept_request(Acceptor, Proposer, Round, Value) 
-    end) || Acceptor <- gaoler:get_acceptors(),
-    acceptors:send_promise_requests(self(), {Election,Round}),
+	send_promise_requests(self(), {Election,Round}),
     {ok, awaiting_promises, #state{
            election = Election,
            round = Round, 
@@ -69,13 +67,32 @@ init([Election, Proposal, ReplyPid]) ->
            reply_to = ReplyPid
     }}.
 
+send_promise_requests(ReplyToProposer, Round) ->
+    [spawn(fun() -> 
+        send_promise_request(ReplyToProposer, Acceptor, Round) 
+    end) || Acceptor <- gaoler:get_acceptors()],
+    ok.
+
+send_promise_request(Proposer, Acceptor, Round) ->    
+    Reply = acceptor:prepare(Acceptor, Round),
+    proposer:deliver_promise(Proposer, Reply).
+
+send_accept_requests(Proposer, Round, Value) ->
+    [spawn(fun() -> 
+        send_accept_request(Acceptor, Proposer, Round, Value) 
+    end) || Acceptor <- gaoler:get_acceptors() ],
+    ok.
+
+send_accept_request(Acceptor, Proposer, Round, Value) ->
+    Reply = acceptor:accept(Acceptor, Round, Value),
+    proposer:deliver_accept(Proposer, Reply).
 % on discovering a higher round has been promised
 awaiting_promises({promised, PromisedRound, _}, State) 
     when PromisedRound > State#state.round -> % restart with Round+1 
     NextRound = PromisedRound + 1, 
     NewState = State#state{round = NextRound, promises = 0},
     timer:sleep(NextRound*10), % lazy version of exponential backoff
-    acceptors:send_promise_requests(self(), {NewState#state.election,
+    send_promise_requests(self(), {NewState#state.election,
                                              NextRound}),
     {next_state, awaiting_promises, NewState};
         
@@ -103,7 +120,7 @@ loop_until_promise_quorum(State) ->
     case State#state.promises >= gaoler:majority() of
         true -> % majority reached
             Proposal = State#state.value#proposal.value,
-            acceptors:send_accept_requests(self(), 
+            send_accept_requests(self(), 
                                            {State#state.election, 
                                             State#state.round}, 
                                            Proposal),
@@ -116,7 +133,7 @@ loop_until_promise_quorum(State) ->
 
 awaiting_accepts({rejected, Round}, #state{round = Round, rejects = 2}=State) ->
     RetryRound = Round + 2,
-    acceptors:send_promise_requests(self(), {State#state.election, RetryRound}),
+    send_promise_requests(self(), {State#state.election, RetryRound}),
     {next_state, awaiting_promises, State#state{round = RetryRound, promises = 0}};
 
 awaiting_accepts({rejected, Round}, #state{round=Round}=State) ->

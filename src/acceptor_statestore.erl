@@ -4,7 +4,7 @@
          init/0,
          find/1,
          replace/1,
-         add/1,
+         add/1
         ]).
 
 -include_lib("stdlib/include/ms_transform.hrl").
