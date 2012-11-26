@@ -13,12 +13,14 @@
 
 %%% Client API
 request(Operation, Client) ->
+	io:format("Replica req1"),
     spawn(fun() -> client_proxy(Operation, Client) end),
     ok.
 
 client_proxy(Operation, Client) ->
     ClientProxy = self(),
     UniqueRef = make_ref(),
+	io:format("Replica req2"),
     [{?SERVER, Node} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}} || Node <- [node()|nodes()]],
     %?SERVER ! {request, {ClientProxy, UniqueRef, {Operation, Client}}},
     receive
@@ -31,7 +33,7 @@ start_link(LockApplication) ->
     ReplicaState = #replica{application=LockApplication},
     Pid = spawn_link(fun() -> loop(ReplicaState) end),
     register(replica, Pid),
-    erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
+    %erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
 	io:format("Replica inited"),
     {ok, Pid}.
 

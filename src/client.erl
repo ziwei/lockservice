@@ -24,12 +24,13 @@
 start(0,Server) ->
  	ok;
 start(N,Server)->
-	lock:acquire(self(), Server),
+	%lock:acquire(self(), Server),
 	%receive lock -> ok end,
 	%lock:release(self(), Server),
-    ok = replica:request(acquire, self()),
+    ok = replica:request(acquire, Server),
 	io:format("lock acquired"),
-	ok = replica:request(release, self()),
+	receive lock -> ok end,
+	ok = replica:request(release, Server),
 	io:format("lock release"),
 	lock:get_queue(Server),
 	io:format("lock finished"),

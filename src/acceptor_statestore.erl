@@ -7,7 +7,7 @@
          add/1
         ]).
 
--include_lib("stdlib/include/ms_transform.hrl").
+%-include_lib("stdlib/include/ms_transform.hrl").
 -include_lib("acceptor_state.hrl").
 
 -define (TABLE, acceptor_statestore).
