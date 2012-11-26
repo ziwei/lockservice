@@ -95,6 +95,7 @@ handle_prepare_for_existing_election(_ElectionId, Round, FoundElection, State) -
 create_new_election_from_prepare_request(ElectionId, Round, State) ->
     NewElection = #election{id = ElectionId, promised = Round},
     add_new_election(NewElection),
+	io:format("promise replied"),
     %persister:remember_promise(ElectionId, Round),
     {reply, {promised, Round, NewElection#election.accepted}, State}.
 

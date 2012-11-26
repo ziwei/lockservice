@@ -9,7 +9,7 @@
 	 get_acceptors/0,
          majority/0,
          replicas/0,
-	 join/0,
+	% join/0,
 	 stop/0
 	]).
 
@@ -24,8 +24,8 @@
 	]).
 
 -define(SERVER, ?MODULE). 
--define(DEFAULT_MAJORITY, 3).
--define(DEFAULT_REPLICAS, 5).
+-define(DEFAULT_MAJORITY, 1).
+-define(DEFAULT_REPLICAS, 1).
 
 %%%===================================================================
 %%% API
@@ -40,8 +40,8 @@ majority() ->
 replicas() ->
     gen_server:call(?SERVER, replicas).
 
-join() ->
-    gen_server:abcast(?SERVER, {join, node()}). 
+%join() ->
+    %gen_server:abcast(?SERVER, {join, node()}). 
 
 get_acceptors() ->
     gen_server:call(?SERVER, get_acceptors).
@@ -82,12 +82,12 @@ handle_call(replicas, _From, State) ->
 handle_call(majority, _From, State) ->
     {reply, proplists:get_value(majority, State#state.configuration), State};
 handle_call(get_acceptors, _From, State) ->
-    Reply = [{acceptor, Node} || Node <- [node()|nodes()]],
+    Reply = [{simple_acceptor, Node} || Node <- [node()|nodes()]],
     {reply, Reply, State}.
 
-handle_cast({join, Node}, State) ->
-    erlang:monitor_node(Node, true),
-    {noreply, State};
+%handle_cast({join, Node}, State) ->
+    %erlang:monitor_node(Node, true),
+    %{noreply, State};
 handle_cast(stop, State) ->
     {stop, normal, State};
 handle_cast(_Msg, State) ->

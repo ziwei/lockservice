@@ -1,5 +1,5 @@
 -module(replica).
--export([request/2]).
+-export([request/3]).
 -export([loop/1, start_link/1, stop/0]).
 
 -record(replica, {slot_num = 1,
@@ -12,16 +12,17 @@
 -define (GC_INTERVAL, 60000).
 
 %%% Client API
-request(Operation, Client) ->
+request(Operation, Client, Server) ->
 	io:format("Replica req1"),
-    spawn(fun() -> client_proxy(Operation, Client) end),
+    spawn(fun() -> client_proxy(Operation, Client, Server) end),
     ok.
 
-client_proxy(Operation, Client) ->
+client_proxy(Operation, Client, Server) ->
     ClientProxy = self(),
     UniqueRef = make_ref(),
+    %[{?SERVER, Node} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}} || Node <- [node()|nodes()]],
+	{?SERVER, Server} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}},
 	io:format("Replica req2"),
-    [{?SERVER, Node} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}} || Node <- [node()|nodes()]],
     %?SERVER ! {request, {ClientProxy, UniqueRef, {Operation, Client}}},
     receive
         {response, UniqueRef, {_, Result}} ->
@@ -43,9 +44,12 @@ stop() ->
 loop(State) ->
     receive
         {request, Command} ->
+			io:format("Replica proposing"),
             NewState = propose(Command, State),
+			io:format("Replica proposed"),
             loop(NewState);
         {decision, Slot, Command} ->
+			io:format("Replica got decision"),
             NewState = handle_decision(Slot, Command, State),
             loop(NewState);        
         gc_trigger ->
@@ -75,6 +79,7 @@ propose(Command, State) ->
     case is_command_already_decided(Command, State) of 
         false ->
             Proposal = {slot_for_next_proposal(State), Command},
+			io:format("Proposal ready"),
             send_to_leaders(Proposal, State),
             add_proposal_to_state(Proposal, State);
         true ->
@@ -99,6 +104,9 @@ is_command_already_decided(Command, State) ->
     ).
 
 handle_decision(Slot, Command, State) ->
+	Acq = element(3,Command),
+	io:format("command ~w", [element(2,Acq)]),
+	element(2,Acq) ! lock,
     NewStateA = add_decision_to_state({Slot, Command}, State),
     consume_decisions(NewStateA).
 
@@ -176,4 +184,4 @@ remove_proposal_from_state(SlotNumber, State) ->
 
 send_to_leaders(Proposal, _State) ->
 %    self() ! {decision, Slot, Proposal}.
-    proposer:propose(Proposal).
+    simple_proposer:propose(Proposal).
