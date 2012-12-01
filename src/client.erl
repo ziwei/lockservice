@@ -12,7 +12,7 @@
 %%
 -export([start/2, service/2]).
 
--define(CLIENT, 'ziwei@127.0.0.1').
+-define(CLIENT, 'client@130.237.20.139').
 
 %%
 %% API Functions
@@ -31,11 +31,11 @@ service(N,Server)->
 	%receive lock -> ok end,
 	%lock:release(self(), Server),
     ok = replica:request(acquire, {client1, ?CLIENT}, Server),
-	io:format("lock acquired ~w", [{client1, ?CLIENT}]),
 	receive lock -> ok end,
+	io:format("lock acquired ~w~n", [{client1, ?CLIENT}]),
 	ok = replica:request(release, {client1, ?CLIENT}, Server),
-	io:format("lock release"),
+	io:format("lock released ~n"),
 	lock:get_queue(Server),
-	io:format("lock finished"),
+	io:format("lock finished ~n"),
 	service(N-1,Server).
 

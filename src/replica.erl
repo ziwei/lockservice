@@ -13,7 +13,7 @@
 
 %%% Client API
 request(Operation, Client, Server) ->
-	io:format("Replica req1"),
+	io:format("Requesting ~w to ~w ~n",[Operation,Server]),
     spawn(fun() -> client_proxy(Operation, Client, Server) end),
     ok.
 
