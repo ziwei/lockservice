@@ -94,14 +94,14 @@ gc_decisions(State) ->
 propose(Command, State) ->
     case is_command_already_decided(Command, State) of 
         false ->
-			io:format("New command proposed ~w", [Command]),
+			io:format("New command proposed ~w  ~n", [Command]),
             Proposal = {slot_for_next_proposal(State), Command},
 			io:format("Proposal ready:~w~n",[Proposal]),
 
             send_to_leaders(Proposal, State),
             add_proposal_to_state(Proposal, State);
         true ->
-			io:format("Already proposed ~w", [Command]),
+			io:format("Already proposed ~w  ~n", [Command]),
             State
     end.
 
@@ -173,14 +173,14 @@ handle_received_decision(Slot, DecidedCommand, State) ->
 
 %% carries out Command, unless it's already been performed by a previous decision
 perform({Operation, Client}=Command, State) ->
-	%io:format("perform "),
+	io:format("perform Command ~n"),
     case has_command_already_been_performed(Command, State) of
         true -> % don't apply repeat messages
 			%io:format("already "),
             inc_slot_number(State);
         false -> % command not seen before, apply
             ResultFromFunction = (catch (State#replica.application):Operation(Client)),
-			io:format("apply ~w", [Client]),
+			io:format("apply Client ~w ~n", [Client]),
             NewState = inc_slot_number(State),
 			{_, Name, Node} = Client,
             {Name, Node} ! {response, {Operation, ResultFromFunction}},            
@@ -189,7 +189,7 @@ perform({Operation, Client}=Command, State) ->
 
 %% predicate: if exists an S : S < slot_num and {slot, command} in decisions
 has_command_already_been_performed(Command, State) ->
-	io:format("is applied ? ~w", [Command]),
+	io:format("is Command applied ? ~w ~n", [Command]),
     PastCmdMatcher = fun(
         {S, P}) -> 
             (P == Command) and (S < State#replica.slot_num)
@@ -200,7 +200,7 @@ inc_slot_number(State) ->
     State#replica{slot_num=State#replica.slot_num + 1}.
 
 add_decision_to_state(SlotCommand, State) ->
-	io:format("SlotCommand ~w", [SlotCommand]),
+	io:format(" Add dec to State SlotCommand ~w ~n", [SlotCommand]),
     State#replica{ decisions = [SlotCommand | State#replica.decisions] }.
 
 add_proposal_to_state(Proposal, State) ->
@@ -216,6 +216,6 @@ send_to_leaders(Proposal, _State) ->
 restore_slotcommands([], _) -> ok;
 restore_slotcommands(SlotCommands, State) ->
 	[SlotCommand|RestSlotCommands] = SlotCommands,
-	io:format("Restore SlotCommand ~w", [SlotCommand]),
+	io:format("Restore SlotCommand ~w ~n", [SlotCommand]),
 	add_decision_to_state(SlotCommand, State),
 	restore_slotcommands(RestSlotCommands, State).

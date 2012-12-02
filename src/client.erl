@@ -31,13 +31,13 @@ request(N,Server, Name)->
 	%receive lock -> ok end,
 	%lock:release(self(), Server),
 
-	io:format("lock acquired "),
-    ok = replica:request(acquire, Server, {N, Name, ?CLIENT}),
+	io:format("lock acquired ~n"),
+    ok = replica:request(acquire, Server, {erlang:now(), Name, ?CLIENT}),
 	
 %% 	receive lock -> ok end,
 %% 	ok = replica:request(release, {client1, ?CLIENT}, Server),
 %% 	io:format("lock release"),
 	%lock:get_queue(Server),
-	io:format("lock finished"),
+	io:format("lock finished ~n"),
 	request(N-1,Server, Name).
 

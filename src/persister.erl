@@ -24,7 +24,7 @@ remember_promise(Election, Round) ->
     ok = log_promise_to_file(Election, Round).
 
 remember_vote(Election, Round, Value) ->
-	io:format("rem voteiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii ~w", [Value]),
+	io:format("remembering vote ~w ~w ~n", [Round, Value]),
 	ok = log_vote_to_file(Election, Round, Value).
 %% 	 case is_atom(Value) of
 %% 		 true ->
@@ -57,12 +57,12 @@ log_promise_to_file(Election, Round) ->
 log_vote_to_file(Election, Round, Value) ->
 %%     LogRecord = "{accepted,"++integer_to_list(Round)++
 %%         ","++atom_to_list(Value)++"}.\n",
-	io:format("Round : ~w, Value : ~w", [Round, Value]),
+	io:format("Round : ~w, Value : ~w ~n", [Round, Value]),
     append_to_logfile(Election, {accepted, {Round, Value}}).
 
 load_saved_state_from_file() ->
 %%     error("unimplemented").
-	io:format("log files recovery started"),
+	io:format("log files recovery started ~n"),
  	case file:list_dir(?LOGDIRECTORY) of
   	   {ok, Files} ->
 		  %io:format("log files located"),
@@ -70,7 +70,7 @@ load_saved_state_from_file() ->
    	      %#state{elections=Elections}; %-- this has been removed
    	   {error, _} ->
 		  Elections = [],
-   	      io:format("log files corrupted")
+   	      io:format("log files corrupted ~n")
  	end,
 	%io:format("recovered collections : ~w", [Elections]),
 	Elections.
@@ -80,12 +80,12 @@ load_saved_queue_from_file() ->
 	%io:format("log files recovery started"),
  	case file:list_dir(?QUEUEDIRECTORY) of
   	   {ok, Files} ->
-		  io:format("log files located"),
+		  io:format("log files located ~n"),
    	      SlotCommands = collect_slotcommands(Files),
-		  io:format("log files collected");
+		  io:format("log files collected ~n");
    	   {error, _} ->
 		  SlotCommands = [],
-   	      io:format("log files corrupted")
+   	      io:format("log files corrupted ~n")
  	end,
 	%[SlotCommand|_] = SlotCommands,
 	%io:format("recovered SlotCommands : ~s", [SlotCommands]),
@@ -115,7 +115,7 @@ load_saved_queue_from_file() ->
      [].
 
 collect_slotcommands(Files) ->
-	 io:format("log file collecting ~s", [Files]),
+	 io:format("log file collecting ~s  ~n", [Files]),
      Self = self(),
      Pids = lists:map(fun(File) ->
                               spawn(fun() ->
@@ -130,7 +130,7 @@ collect_slotcommands(Files) ->
          {Pid, {error, _}} -> % filter corrupt files, is this intended?
              gather_slotcommands(Tail);
          {Pid, ReturnValue} ->
-			 io:format("return : ~w", [ReturnValue]),
+			 io:format("returnValue : ~w  ~n", [ReturnValue]),
              [ReturnValue|gather_slotcommands(Tail)]
      end;
  gather_slotcommands([]) ->
@@ -171,7 +171,7 @@ read_queue_file(Parent, File) ->
                 % critical -> could not parse the logfile
                 {error, parse_error}
         end,
-	io:format("result send back ~w", [Result]),
+	io:format("result send back ~w ~n", [Result]),
     Parent ! {self(), Result}.
 
 member([], Promise, Accepted) -> {Promise, Accepted};
