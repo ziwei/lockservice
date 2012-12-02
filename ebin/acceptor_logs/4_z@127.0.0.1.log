@@ -1,0 +1,3 @@
+{election, 4}.
+{promised,1}.
+{accepted,{1,{acquire,{2,client,'c@127.0.0.1'}}}}.

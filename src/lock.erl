@@ -41,10 +41,10 @@ init([])->
     }}.
 
 handle_call(get_queue, _From, State) ->
-	%io:format("Queue ~w", [State#state.queue]),
+	io:format("Queue ~w", [State#state.queue]),
     {reply, State#state.queue, State};
 handle_call({acquire, Client}, _From, State) ->
-	%io:format("handle acq"),
+	io:format("handle acq"),
     {reply, ok, handle_acquire_req(Client, State)};
 handle_call({release, Client}, _From, State) -> 
     {reply, ok, handle_release_req(Client, State)}.
