@@ -12,7 +12,7 @@
 %%
 -export([start/2, service/2]).
 
--define(CLIENT, 'client@130.237.20.139').
+-define(CLIENT, 'client@lakka-6.it.kth.se').
 
 %%
 %% API Functions

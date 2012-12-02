@@ -61,7 +61,7 @@ accept(Acceptor, {Election,Round}, Value) ->
 init([]) ->
 	acceptor_statestore:init(),
     StartState = #state{},
-	io:format("Acceptor inited"),
+	io:format("Acceptor inited~n"),
     {ok, StartState}.
 
 handle_call({prepare, {ElectionId, Round}}, _From, State) ->
@@ -95,7 +95,7 @@ handle_prepare_for_existing_election(_ElectionId, Round, FoundElection, State) -
 create_new_election_from_prepare_request(ElectionId, Round, State) ->
     NewElection = #election{id = ElectionId, promised = Round},
     add_new_election(NewElection),
-	io:format("promise replied"),
+	io:format("promise replied~n"),
     %persister:remember_promise(ElectionId, Round),
     {reply, {promised, Round, NewElection#election.accepted}, State}.
 

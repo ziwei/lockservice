@@ -22,7 +22,7 @@ client_proxy(Operation, Client, Server) ->
     UniqueRef = make_ref(),
     %[{?SERVER, Node} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}} || Node <- [node()|nodes()]],
 	{?SERVER, Server} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}},
-	io:format("Replica req2"),
+	io:format("Replica: sending requests ~n"),
     %?SERVER ! {request, {ClientProxy, UniqueRef, {Operation, Client}}},
     receive
         {response, UniqueRef, {_, Result}} ->
@@ -35,7 +35,6 @@ start_link(LockApplication) ->
     Pid = spawn_link(fun() -> loop(ReplicaState) end),
     register(replica, Pid),
     %erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
-	io:format("Replica inited"),
     {ok, Pid}.
 
 stop() ->
@@ -44,12 +43,12 @@ stop() ->
 loop(State) ->
     receive
         {request, Command} ->
-			io:format("Replica proposing"),
+			io:format("Replica proposing~n"),
             NewState = propose(Command, State),
-			io:format("Replica proposed"),
+			io:format("Replica proposed~n"),
             loop(NewState);
         {decision, Slot, Command} ->
-			io:format("Replica got decision"),
+			io:format("Replica got decision~n"),
             NewState = handle_decision(Slot, Command, State),
             loop(NewState);        
         gc_trigger ->
@@ -79,7 +78,7 @@ propose(Command, State) ->
     case is_command_already_decided(Command, State) of 
         false ->
             Proposal = {slot_for_next_proposal(State), Command},
-			io:format("Proposal ready"),
+			io:format("Proposal ready:~w~n",[Proposal]),
             send_to_leaders(Proposal, State),
             add_proposal_to_state(Proposal, State);
         true ->
@@ -105,7 +104,7 @@ is_command_already_decided(Command, State) ->
 
 handle_decision(Slot, Command, State) ->
 	Acq = element(3,Command),
-	io:format("command ~w", [element(2,Acq)]),
+	io:format("command ~w~n", [element(2,Acq)]),
 	element(2,Acq) ! lock,
     NewStateA = add_decision_to_state({Slot, Command}, State),
     consume_decisions(NewStateA).

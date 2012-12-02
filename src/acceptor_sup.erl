@@ -59,7 +59,7 @@ init([]) ->
     Acceptor = {acceptor ,{?SIMPLE, start_link,[]},
 	      permanent, 2000, worker, [?SIMPLE]},
 	
-	io:format("Acceptor sup inited"),
+	io:format("Acceptor supervisor inited~n"),
 	
     {ok, {?SUPFLAGS, [Acceptor]}}.
 
