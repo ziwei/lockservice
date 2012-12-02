@@ -9,6 +9,7 @@
 	 get_acceptors/0,
          majority/0,
          replicas/0,
+	 whois_leader/1,
 	% join/0,
 	 stop/0
 	]).
@@ -111,6 +112,20 @@ handle_info(_Info, State) ->
 
 terminate(_Reason, _State) -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
+
+whois_leader([]) ->
+	ok;
+whois_leader(Nodes) ->
+	io:format("Node ~w ~n" ,[Nodes]),
+	[Node|OtherNodes] = Nodes,
+	%io:format("Node ~w ~n" ,[Node]),
+	case net_adm:ping(Node) of
+		pang ->
+			whois_leader(OtherNodes);
+		pong ->
+			io:format(" Leader Node ~w ~n" ,[Node]),
+			Node
+	end.
 
 %%%===================================================================
 %%% Internal functions

@@ -5,7 +5,8 @@
 -record(replica, {slot_num = 1,
                   proposals = [],
                   decisions = [],
-                  application = undefined
+                  application = undefined,
+				  leader = undefined
                   }).
 
 -define (SERVER, ?MODULE).
@@ -26,7 +27,7 @@ client_proxy(Operation, Server, Client) ->
     %UniqueRef = make_ref(),
     %[{?SERVER, Node} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}} || Node <- [node()|nodes()]],
 
-	{?SERVER, Server} ! {request, {Operation, Client}},
+	{?SERVER, Server} ! {client_request, {Operation, Client}},
 	io:format("Replica: sending requests ~n"),
 
     %?SERVER ! {request, {ClientProxy, UniqueRef, {Operation, Client}}},
@@ -38,9 +39,11 @@ client_proxy(Operation, Server, Client) ->
     
 %%% Replica 
 start_link(LockApplication) ->
-    ReplicaState = #replica{application=LockApplication},
+	Leader = leader_election(),
+	io:format("replica inited nodes ~w ~n", [node()]),
+    ReplicaState = #replica{application=LockApplication, leader=Leader},
 	SlotCommands = persister:load_saved_queue(),
-	io:format("start restoring"),
+	io:format("start restoring ~n"),
 	restore_slotcommands(SlotCommands, ReplicaState),
     Pid = spawn_link(fun() -> loop(ReplicaState) end),
     register(replica, Pid),
@@ -53,8 +56,16 @@ stop() ->
 
 loop(State) ->
     receive
-        {request, Command} ->
-
+		{nodedown, _} ->
+			Leader = leader_election(),
+			NewState = #replica{leader=Leader},
+			loop(NewState);
+		{client_request, Command} ->
+			io:format("client req~n"),
+			{?SERVER, State#replica.leader} ! {server_request, Command},
+			loop(State);
+        {server_request, Command} ->
+			io:format("server req~n"),
 			io:format("Replica proposing~n"),
 
 
@@ -77,6 +88,16 @@ loop(State) ->
     end.
 
 %%% Internals
+leader_election() ->
+	io:format("Leader election start ~n"),
+	Config = file:consult("gaoler.config"),
+	{ok, [_, Nodes]} = Config,
+	{nodes, NodeList} = Nodes,
+	io:format("Leader election start 1 ~n"),
+	Leader = gaoler:whois_leader(NodeList),
+	io:format("Leader election start 2 ~n"),
+	erlang:monitor_node(Leader, true),
+	Leader.
 
 gc_decisions(State) ->
     CleanUpto = State#replica.slot_num - 200,
