@@ -10,32 +10,34 @@
 %%
 %% Exported Functions
 %%
--export([start/2, service/2]).
+
+-export([start/2, request/3]).
 
 -define(CLIENT, 'client@lakka-6.it.kth.se').
 
 %%
 %% API Functions
-%%
-start(N,Server) ->
-register(client1, self()),
-service(N,Server),
-ok.
-%%
+
 %% Local Functions
 %%
-service(0,Server) ->
+start(N,Server) ->
+	register(client, self()),
+	request(N, Server, client).
+
+request(0,Server, Name) ->
  	ok;
-service(N,Server)->
+request(N,Server, Name)->
 	%lock:acquire(self(), Server),
 	%receive lock -> ok end,
 	%lock:release(self(), Server),
-    ok = replica:request(acquire, {client1, ?CLIENT}, Server),
-	receive lock -> ok end,
-	io:format("lock acquired ~w~n", [{client1, ?CLIENT}]),
-	ok = replica:request(release, {client1, ?CLIENT}, Server),
-	io:format("lock released ~n"),
-	lock:get_queue(Server),
-	io:format("lock finished ~n"),
-	service(N-1,Server).
+
+	io:format("lock acquired "),
+    ok = replica:request(acquire, Server, {N, Name, ?CLIENT}),
+	
+%% 	receive lock -> ok end,
+%% 	ok = replica:request(release, {client1, ?CLIENT}, Server),
+%% 	io:format("lock release"),
+	%lock:get_queue(Server),
+	io:format("lock finished"),
+	request(N-1,Server, Name).
 

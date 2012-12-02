@@ -12,29 +12,40 @@
 -define (GC_INTERVAL, 60000).
 
 %%% Client API
-request(Operation, Client, Server) ->
-	io:format("Requesting ~w to ~w ~n",[Operation,Server]),
-    spawn(fun() -> client_proxy(Operation, Client, Server) end),
+request(Operation,Server, Client) ->
+	%io:format("Replica req1"),
+    client_proxy(Operation, Server, Client),
+
     ok.
 
-client_proxy(Operation, Client, Server) ->
-    ClientProxy = self(),
-    UniqueRef = make_ref(),
+client_proxy(Operation, Server, Client) ->
+    %ClientProxy = self(),
+	%register(client, self()),
+	io:format("applied "),
+	%io:format("applied ~w ~w", [Client, ClientProxy]),
+    %UniqueRef = make_ref(),
     %[{?SERVER, Node} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}} || Node <- [node()|nodes()]],
-	{?SERVER, Server} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}},
+
+	{?SERVER, Server} ! {request, {Operation, Client}},
 	io:format("Replica: sending requests ~n"),
+
     %?SERVER ! {request, {ClientProxy, UniqueRef, {Operation, Client}}},
     receive
-        {response, UniqueRef, {_, Result}} ->
+        {response, {_, Result}} ->
+			io:format("applied "),
             {ok, Result}
     end.
     
 %%% Replica 
 start_link(LockApplication) ->
     ReplicaState = #replica{application=LockApplication},
+	SlotCommands = persister:load_saved_queue(),
+	io:format("start restoring"),
+	restore_slotcommands(SlotCommands, ReplicaState),
     Pid = spawn_link(fun() -> loop(ReplicaState) end),
     register(replica, Pid),
     %erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
+
     {ok, Pid}.
 
 stop() ->
@@ -43,13 +54,19 @@ stop() ->
 loop(State) ->
     receive
         {request, Command} ->
+
 			io:format("Replica proposing~n"),
+
+
             NewState = propose(Command, State),
 			io:format("Replica proposed~n"),
             loop(NewState);
         {decision, Slot, Command} ->
+
 			io:format("Replica got decision~n"),
+
             NewState = handle_decision(Slot, Command, State),
+			%persister:delete_election(Slot),
             loop(NewState);        
         gc_trigger ->
             NewState = gc_decisions(State),
@@ -77,11 +94,14 @@ gc_decisions(State) ->
 propose(Command, State) ->
     case is_command_already_decided(Command, State) of 
         false ->
+			io:format("New command proposed ~w", [Command]),
             Proposal = {slot_for_next_proposal(State), Command},
 			io:format("Proposal ready:~w~n",[Proposal]),
+
             send_to_leaders(Proposal, State),
             add_proposal_to_state(Proposal, State);
         true ->
+			io:format("Already proposed ~w", [Command]),
             State
     end.
 
@@ -103,9 +123,8 @@ is_command_already_decided(Command, State) ->
     ).
 
 handle_decision(Slot, Command, State) ->
-	Acq = element(3,Command),
-	io:format("command ~w~n", [element(2,Acq)]),
-	element(2,Acq) ! lock,
+	persister:persist_queue(Slot, Command),
+
     NewStateA = add_decision_to_state({Slot, Command}, State),
     consume_decisions(NewStateA).
 
@@ -116,8 +135,11 @@ handle_decision(Slot, Command, State) ->
 %% returns: updated state, with changes to application, slot_number, and the command queues
 consume_decisions(State) ->
     Slot = State#replica.slot_num,
+	%io:format("consuming ~w", [Slot]),
     case lists:keyfind(Slot, 1, State#replica.decisions) of
         false ->
+			%io:format("not here "),
+			
             State;
         {Slot, DecidedCommand} ->
             StateAfterProposalGC = handle_received_decision(Slot, DecidedCommand, State),
@@ -150,19 +172,24 @@ handle_received_decision(Slot, DecidedCommand, State) ->
     end.
 
 %% carries out Command, unless it's already been performed by a previous decision
-perform({ClientProxy, UniqueRef, {Operation, Client}}=Command, State) ->
+perform({Operation, Client}=Command, State) ->
+	%io:format("perform "),
     case has_command_already_been_performed(Command, State) of
         true -> % don't apply repeat messages
+			%io:format("already "),
             inc_slot_number(State);
         false -> % command not seen before, apply
             ResultFromFunction = (catch (State#replica.application):Operation(Client)),
+			io:format("apply ~w", [Client]),
             NewState = inc_slot_number(State),
-            ClientProxy ! {response, UniqueRef, {Operation, ResultFromFunction}},            
+			{_, Name, Node} = Client,
+            {Name, Node} ! {response, {Operation, ResultFromFunction}},            
             NewState
     end.
 
 %% predicate: if exists an S : S < slot_num and {slot, command} in decisions
 has_command_already_been_performed(Command, State) ->
+	io:format("is applied ? ~w", [Command]),
     PastCmdMatcher = fun(
         {S, P}) -> 
             (P == Command) and (S < State#replica.slot_num)
@@ -173,6 +200,7 @@ inc_slot_number(State) ->
     State#replica{slot_num=State#replica.slot_num + 1}.
 
 add_decision_to_state(SlotCommand, State) ->
+	io:format("SlotCommand ~w", [SlotCommand]),
     State#replica{ decisions = [SlotCommand | State#replica.decisions] }.
 
 add_proposal_to_state(Proposal, State) ->
@@ -184,3 +212,10 @@ remove_proposal_from_state(SlotNumber, State) ->
 send_to_leaders(Proposal, _State) ->
 %    self() ! {decision, Slot, Proposal}.
     simple_proposer:propose(Proposal).
+
+restore_slotcommands([], _) -> ok;
+restore_slotcommands(SlotCommands, State) ->
+	[SlotCommand|RestSlotCommands] = SlotCommands,
+	io:format("Restore SlotCommand ~w", [SlotCommand]),
+	add_decision_to_state(SlotCommand, State),
+	restore_slotcommands(RestSlotCommands, State).

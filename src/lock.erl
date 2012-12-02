@@ -19,8 +19,10 @@
 %% API Functions
 %%
 start() ->
+	io:format("enter start link"),
 	gen_server:start({local, ?SERVER}, ?MODULE,[],[]).
 start_link() ->
+	io:format("enter start link"),
 	gen_server:start_link({local, ?SERVER}, ?MODULE,[],[]).
 acquire (Client, Server) ->
 	io:format("enter acq"), 	
@@ -33,15 +35,16 @@ get_queue(Server) ->
 %% Local Functions
 %%7
 init([])->
+	io:format("Lock init"),
 	{ok, #state{
         queue = queue:new()
     }}.
 
 handle_call(get_queue, _From, State) ->
-	io:format("Queue ~w ~n", [State#state.queue]),
+	%io:format("Queue ~w", [State#state.queue]),
     {reply, State#state.queue, State};
 handle_call({acquire, Client}, _From, State) ->
-	io:format("Lock: handling lock acquire ~n"),
+	%io:format("handle acq"),
     {reply, ok, handle_acquire_req(Client, State)};
 handle_call({release, Client}, _From, State) -> 
     {reply, ok, handle_release_req(Client, State)}.
@@ -81,7 +84,7 @@ handle_release_req(_Client, State) ->
             State#state{queue=EmptyQueue}
     end.
 comms(_, Args, _) -> 
-	io:format("Sending lock to ~w ~n", [Args]),
+	io:format("Target pid ~w", [Args]),
      Args ! lock.
 
 %%%===================================================================

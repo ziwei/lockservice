@@ -31,7 +31,7 @@
 
 
 -define(SERVER, ?MODULE).
--define(MAJORITY, 3).
+-define(MAJORITY, 1).
 
 
 %%%===================================================================
@@ -75,6 +75,7 @@ send_promise_requests(ReplyToProposer, Round) ->
 
 send_promise_request(Proposer, Acceptor, Round) ->    
 	io:format("Acceptor prepared ~w~n", [Acceptor]),
+
     Reply = simple_acceptor:prepare(Acceptor, Round),
     deliver_promise(Proposer, Reply).
 
@@ -90,7 +91,9 @@ send_accept_request(Acceptor, Proposer, Round, Value) ->
 % on discovering a higher round has been promised
 awaiting_promises({promised, PromisedRound, _}, State) 
     when PromisedRound > State#state.round -> % restart with Round+1 
+
     io:format("promise received1~n"),
+
     NextRound = PromisedRound + 1, 
     NewState = State#state{round = NextRound, promises = 0},
     timer:sleep(NextRound*10), % lazy version of exponential backoff
@@ -101,12 +104,15 @@ awaiting_promises({promised, PromisedRound, _}, State)
 % on receiving a promise without past-vote data
 awaiting_promises({promised, PromisedRound, no_value}, #state{round = PromisedRound}=State) ->
 	io:format("promise received2~n"),
+
     loop_until_promise_quorum(State#state{promises = State#state.promises + 1});
 
 % on receiving a promise with accompanying previous-vote data
 awaiting_promises({promised, PromisedRound, {AcceptedRound, AcceptedValue}}, 
     #state{round=PromisedRound}=State) -> 
+
 	io:format("promise received3~n"),
+
     NewState = State#state{ 
         value = case AcceptedRound > State#state.value#proposal.accepted_in_round of
             true -> #proposal{accepted_in_round = AcceptedRound, value=AcceptedValue} ;
@@ -118,11 +124,12 @@ awaiting_promises({promised, PromisedRound, {AcceptedRound, AcceptedValue}},
 
 % on receiving unknown message
 awaiting_promises(_, State) ->
+
 	io:format("promise received4~n"),
     {next_state, awaiting_promises, State}.
 
 loop_until_promise_quorum(State) ->
-	io:format("maj ~w", [gaoler:majority()]),
+	%io:format("maj ~w", [gaoler:majority()]),
     case State#state.promises >= gaoler:majority() of
         true -> % majority reached
             Proposal = State#state.value#proposal.value,
@@ -150,7 +157,7 @@ awaiting_accepts({accepted, Round, _Value}, #state{round=Round}=State) ->
     case NewState#state.accepts >= gaoler:majority() of
         false ->
             {next_state, awaiting_accepts, NewState};
-        true -> % deliver result to coordinator            
+        true -> % deliver result to coordinator (its replica module)           
             NewState#state.reply_to ! {decision, 
                                        State#state.election, 
                                        State#state.value#proposal.value},
