@@ -22,7 +22,7 @@ client_proxy(Operation, Server, Client) ->
 	%register(client, self()),
 	io:format("applied "),
 	%io:format("applied ~w ~w", [Client, ClientProxy]),
-    UniqueRef = make_ref(),
+    %UniqueRef = make_ref(),
     %[{?SERVER, Node} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}} || Node <- [node()|nodes()]],
 	{?SERVER, Server} ! {request, {Operation, Client}},
 	%io:format("Replica req2"),

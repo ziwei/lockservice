@@ -61,7 +61,12 @@ accept(Acceptor, {Election,Round}, Value) ->
 init([]) ->
 	acceptor_statestore:init(),
     StartState = #state{},
-	io:format("Acceptor inited"),
+	io:format("Acceptor initing"),
+	
+	Elections = persister:load_saved_state(),
+	io:format("Acceptor inited ~w", [Elections]),
+	restore_elections(Elections),
+	io:format("Restoration finished"),
     {ok, StartState}.
 
 handle_call({prepare, {ElectionId, Round}}, _From, State) ->
@@ -85,19 +90,23 @@ handle_prepare({ElectionId, Round}, State) ->
     end.    
 
 handle_prepare_for_existing_election(_ElectionId, Round, FoundElection, State) ->
+	%io:format("id:~w round:~w found election:~w State:~w", [_ElectionId, Round, FoundElection, State]),
     HighestPromise = max(Round, FoundElection#election.promised),
     NewElection = FoundElection#election{promised = HighestPromise},
     update_election(NewElection),
     Reply = {promised, HighestPromise, NewElection#election.accepted},
-    %persister:remember_promise(ElectionId, NewElection#election.promised),
+    persister:remember_promise(_ElectionId, NewElection#election.promised),
     {reply, Reply, State}.
 
 create_new_election_from_prepare_request(ElectionId, Round, State) ->
+	%io:format("id:~w round:~w State:~w", [ElectionId, Round, State]),
     NewElection = #election{id = ElectionId, promised = Round},
     add_new_election(NewElection),
-	io:format("promise replied"),
-    %persister:remember_promise(ElectionId, Round),
+	%io:format("promise replied"),
+    persister:remember_promise(ElectionId, Round),
     {reply, {promised, Round, NewElection#election.accepted}, State}.
+
+	
 
 %%%===================================================================
 %%% Accept requests
@@ -118,7 +127,7 @@ handle_accept_for_election(Round, Value, {ElectionId, Election}, State)
                                     promised = Round, 
                                     accepted = {Round, Value}},
     update_election(NewElection),
-    %persister:remember_vote(ElectionId, Round, Value),
+    persister:remember_vote(ElectionId, Round, Value),
     {{accepted, Round, Value}, State};
 handle_accept_for_election(Round, _Value, _Election, State) ->
     {{reject, Round}, State}.
@@ -128,7 +137,7 @@ create_new_election_from_accept_request(ElectionId, Round, Value, State) ->
                             promised = Round,
                             accepted = {Round, Value}},
     add_new_election(NewElection),
-    %persister:remember_vote(ElectionId, Round, Value),
+    persister:remember_vote(ElectionId, Round, Value),
     {{accepted, Round, Value}, State}.
 
 
@@ -161,3 +170,13 @@ code_change(OldVsn, State, Extra) ->
 %%% Internal functions
 %% --------------------------------------------------------------------
 
+restore_elections([]) -> ok;
+restore_elections(Elections) ->
+	[Election|RestElections] = Elections,
+	%io:format("Elec ~w", [Election]),
+	{_, ElectionId, Promise, Accepted} = Election,
+	%io:format("ooogidoooogi ~w ~w ~w", [ElectionId, Promise, Accepted]),
+	add_new_election(#election{id = ElectionId, 
+                            promised = Promise,
+                            accepted = Accepted}),
+	restore_elections(RestElections).
