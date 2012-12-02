@@ -10,9 +10,11 @@
 %%
 %% Exported Functions
 %%
--export([start/2]).
 
--define(CLIENT, 'c@127.0.0.1').
+-export([start/2, request/3]).
+
+-define(CLIENT, 'client@130.237.20.139').
+
 %%
 %% API Functions
 
@@ -28,6 +30,7 @@ request(N,Server, Name)->
 	%lock:acquire(self(), Server),
 	%receive lock -> ok end,
 	%lock:release(self(), Server),
+
 	io:format("lock acquired "),
     ok = replica:request(acquire, Server, {N, Name, ?CLIENT}),
 	
