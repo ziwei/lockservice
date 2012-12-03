@@ -13,6 +13,7 @@ start()->
 	start(nil,nil).
 
 start(_StartType, _StartArgs) ->
+	io:format("*******Trying to start link*******"),
     lockservice_sup:start_link().
 
 stop(_State) ->
