@@ -84,7 +84,7 @@ handle_call(majority, _From, State) ->
 handle_call(get_acceptors, _From, State) ->
 	%%Modified!
 	%Reply = [{simple_acceptor, Node} || Node <- [node()|nodes()]],
-	%io:format("Acceptors: ~w",[proplists:get_value(nodes, State#state.configuration)]),
+	io:format("Acceptors: ~w",[proplists:get_value(nodes, State#state.configuration)]),
     Reply = [{simple_acceptor, Node} || Node <- [node()|proplists:get_value(nodes, State#state.configuration)]],
 	%io:format("Acceptors:~w~n",[Reply]),
     {reply, Reply, State}.
