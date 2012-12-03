@@ -28,7 +28,7 @@ client_proxy(Operation, Server, Client) ->
     %[{?SERVER, Node} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}} || Node <- [node()|nodes()]],
 
 	{?SERVER, Server} ! {client_request, {Operation, Client}},
-	io:format("Replica: sending requests ~n"),
+	io:format("Replica: sending requests to ~w ~n", [{?SERVER, Server}]),
 
     %?SERVER ! {request, {ClientProxy, UniqueRef, {Operation, Client}}},
     receive
@@ -39,14 +39,15 @@ client_proxy(Operation, Server, Client) ->
     
 %%% Replica 
 start_link(LockApplication) ->
-	Leader = leader_election(),
-	io:format("replica inited nodes ~w ~n", [node()]),
+	%timer:sleep(2000),
+	Leader = default_leader(),
+	io:format("Leader is ~w ~n", [Leader]),
     ReplicaState = #replica{application=LockApplication, leader=Leader},
 	SlotCommands = persister:load_saved_queue(),
-	io:format("start restoring ~n"),
+	io:format("start restoring SlotCommands ~w ~n", [SlotCommands]),
 	restore_slotcommands(SlotCommands, ReplicaState),
     Pid = spawn_link(fun() -> loop(ReplicaState) end),
-    register(replica, Pid),
+    register(?SERVER, Pid),
     %erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
 
     {ok, Pid}.
@@ -55,8 +56,10 @@ stop() ->
     ?SERVER ! stop.
 
 loop(State) ->
+	io:format("start looping ~n"),
     receive
 		{nodedown, _} ->
+			io:format("New leader election ~n"),
 			Leader = leader_election(),
 			NewState = #replica{leader=Leader},
 			loop(NewState);
@@ -85,13 +88,23 @@ loop(State) ->
             loop(NewState);
         stop ->
             ok
-    end.
+    end,
+	io:format("end looping ~n").
 
 %%% Internals
+default_leader() ->
+	Config = file:consult("lockservice.config"),
+	{ok, [_, Nodes]} = Config,
+	io:format("Nodes are ~w ~n", [Nodes]),
+	{nodes, NodeList} = Nodes,
+	[Leader|_] = NodeList,
+	Leader.
+
 leader_election() ->
 	io:format("Leader election start ~n"),
 	Config = file:consult("lockservice.config"),
 	{ok, [_, Nodes]} = Config,
+	io:format("Nodes are ~w ~n", [Nodes]),
 	{nodes, NodeList} = Nodes,
 	io:format("Leader election start 1 ~n"),
 	Leader = master:whois_leader(NodeList),

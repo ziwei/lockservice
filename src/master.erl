@@ -115,7 +115,7 @@ whois_leader([]) ->
 whois_leader(Nodes) ->
 	io:format("Node ~w ~n" ,[Nodes]),
 	[Node|OtherNodes] = Nodes,
-	%io:format("Node ~w ~n" ,[Node]),
+	io:format("Node ~w ~n" ,[Node]),
 	case net_adm:ping(Node) of
 		pang ->
 			whois_leader(OtherNodes);
@@ -123,6 +123,8 @@ whois_leader(Nodes) ->
 			io:format(" Leader Node ~w ~n" ,[Node]),
 			Node
 	end.
+
+
 
 %%%===================================================================
 %%% Internal functions
