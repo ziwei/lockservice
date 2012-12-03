@@ -14,7 +14,7 @@
 -export([start/2, request/3]).
 
 -define(CLIENT, 'client@lakka-6.it.kth.se').
-
+%%-define(CLIENT, 'c@127.0.0.1').
 %%
 %% API Functions
 
