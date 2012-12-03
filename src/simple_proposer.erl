@@ -70,7 +70,7 @@ init([Election, Proposal, ReplyPid]) ->
 send_promise_requests(ReplyToProposer, Round) ->
     [spawn(fun() -> 
         send_promise_request(ReplyToProposer, Acceptor, Round) 
-    end) || Acceptor <- gaoler:get_acceptors()],
+    end) || Acceptor <- master:get_acceptors()],
     ok.
 
 send_promise_request(Proposer, Acceptor, Round) ->    
@@ -82,7 +82,7 @@ send_promise_request(Proposer, Acceptor, Round) ->
 send_accept_requests(Proposer, Round, Value) ->
     [spawn(fun() -> 
         send_accept_request(Acceptor, Proposer, Round, Value) 
-    end) || Acceptor <- gaoler:get_acceptors() ],
+    end) || Acceptor <- master:get_acceptors() ],
     ok.
 
 send_accept_request(Acceptor, Proposer, Round, Value) ->
@@ -129,8 +129,8 @@ awaiting_promises(_, State) ->
     {next_state, awaiting_promises, State}.
 
 loop_until_promise_quorum(State) ->
-	%io:format("maj ~w", [gaoler:majority()]),
-    case State#state.promises >= gaoler:majority() of
+
+    case State#state.promises >= master:majority() of
         true -> % majority reached
             Proposal = State#state.value#proposal.value,
             send_accept_requests(self(), 
@@ -154,7 +154,7 @@ awaiting_accepts({rejected, Round}, #state{round=Round}=State) ->
 
 awaiting_accepts({accepted, Round, _Value}, #state{round=Round}=State) ->
     NewState = State#state{accepts = State#state.accepts + 1},
-    case NewState#state.accepts >= gaoler:majority() of
+    case NewState#state.accepts >= master:majority() of
         false ->
             {next_state, awaiting_accepts, NewState};
         true -> % deliver result to coordinator (its replica module)           

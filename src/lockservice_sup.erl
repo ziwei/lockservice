@@ -19,17 +19,10 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-% Start the frontend service gaoler and the internal paxos components 
-% 
-%              gaoler_sup
-%           /      \       \
-%     acceptor_sup gaoler  lock
-%     /       
-% acceptor 
-%
+
 init([]) ->
-    GaolerService = {gaoler, {gaoler, start_link, []},
-		     permanent, 2000, worker, [gaoler]},
+    Master = {master, {master, start_link, []},
+		     permanent, 2000, worker, [master]},
 	
     
     AcceptorSup = {acceptor_sup, {acceptor_sup, start_link, []},
@@ -42,4 +35,4 @@ init([]) ->
     RSM = {replica, {replica, start_link, [lock]},
            permanent, 2000, worker, [replica]},
     
-    {ok, {?SUPFLAGS, [GaolerService,LockService,AcceptorSup,RSM]}}.%GaolerService,LockService,AcceptorSup,RSM 
+    {ok, {?SUPFLAGS, [Master,LockService,AcceptorSup,RSM]}}.

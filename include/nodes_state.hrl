@@ -1,0 +1,5 @@
+-record(state, 
+	{
+	  subscribers = [],
+          configuration = []
+	}).

@@ -90,11 +90,11 @@ loop(State) ->
 %%% Internals
 leader_election() ->
 	io:format("Leader election start ~n"),
-	Config = file:consult("gaoler.config"),
+	Config = file:consult("lockservice.config"),
 	{ok, [_, Nodes]} = Config,
 	{nodes, NodeList} = Nodes,
 	io:format("Leader election start 1 ~n"),
-	Leader = gaoler:whois_leader(NodeList),
+	Leader = master:whois_leader(NodeList),
 	io:format("Leader election start 2 ~n"),
 	erlang:monitor_node(Leader, true),
 	Leader.
@@ -172,7 +172,7 @@ consume_decisions(State) ->
 
 check_gc_acceptor(Slot) when Slot rem 300 == 0 ->
     [acceptor:gc_this(Acceptor, node(), Slot) || 
-        Acceptor <- gaoler:get_acceptors()];
+        Acceptor <- master:get_acceptors()];
 check_gc_acceptor(_) ->
     noop.
 
