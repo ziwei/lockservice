@@ -74,7 +74,7 @@ send_promise_requests(ReplyToProposer, Round) ->
     ok.
 
 send_promise_request(Proposer, Acceptor, Round) ->    
-	io:format("Acceptor prepared ~w~n", [Acceptor]),
+	%io:format("Acceptor prepared ~w~n", [Acceptor]),
 
     Reply = simple_acceptor:prepare(Acceptor, Round),
     deliver_promise(Proposer, Reply).
@@ -92,7 +92,7 @@ send_accept_request(Acceptor, Proposer, Round, Value) ->
 awaiting_promises({promised, PromisedRound, _}, State) 
     when PromisedRound > State#state.round -> % restart with Round+1 
 
-    io:format("promise received1~n"),
+    %io:format("promise received1~n"),
 
     NextRound = PromisedRound + 1, 
     NewState = State#state{round = NextRound, promises = 0},
@@ -103,7 +103,7 @@ awaiting_promises({promised, PromisedRound, _}, State)
         
 % on receiving a promise without past-vote data
 awaiting_promises({promised, PromisedRound, no_value}, #state{round = PromisedRound}=State) ->
-	io:format("promise received2~n"),
+	%io:format("promise received2~n"),
 
     loop_until_promise_quorum(State#state{promises = State#state.promises + 1});
 
@@ -111,7 +111,7 @@ awaiting_promises({promised, PromisedRound, no_value}, #state{round = PromisedRo
 awaiting_promises({promised, PromisedRound, {AcceptedRound, AcceptedValue}}, 
     #state{round=PromisedRound}=State) -> 
 
-	io:format("promise received3~n"),
+	%io:format("promise received3~n"),
 
     NewState = State#state{ 
         value = case AcceptedRound > State#state.value#proposal.accepted_in_round of
@@ -125,7 +125,7 @@ awaiting_promises({promised, PromisedRound, {AcceptedRound, AcceptedValue}},
 % on receiving unknown message
 awaiting_promises(_, State) ->
 
-	io:format("promise received4~n"),
+	%io:format("promise received4~n"),
     {next_state, awaiting_promises, State}.
 
 loop_until_promise_quorum(State) ->

@@ -1,5 +1,5 @@
 -module(replica).
--export([request/3]).
+-export([request/4]).
 -export([loop/1, start_link/1, stop/0]).
 
 -record(replica, {slot_num = 1,
@@ -10,45 +10,49 @@
                   }).
 
 -define (SERVER, ?MODULE).
--define (GC_INTERVAL, 60000).
+-define (GC_INTERVAL, 10000).
 
 %%% Client API
-request(Operation,Server, Client) ->
+request(Operation,Server, Client, Mode) ->
 	%io:format("Replica req1"),
-    client_proxy(Operation, Server, Client),
+    client_proxy(Operation, Server, Client, Mode),
 
     ok.
 
-client_proxy(Operation, Server, Client) ->
+client_proxy(Operation, Server, Client, Mode) ->
     %ClientProxy = self(),
 	%register(client, self()),
-	io:format("applied "),
+	%io:format("applied "),
 	%io:format("applied ~w ~w", [Client, ClientProxy]),
     %UniqueRef = make_ref(),
     %[{?SERVER, Node} ! {request, {ClientProxy, UniqueRef, {Operation, Client}}} || Node <- [node()|nodes()]],
-
-	{?SERVER, Server} ! {client_request, {Operation, Client}},
-	io:format("Replica: sending requests to ~w ~n", [{?SERVER, Server}]),
+	case Mode of
+		2 -> 
+			{?SERVER, Server} ! {server_request, {Operation, Client}};
+		3 ->
+			{?SERVER, Server} ! {client_request, {Operation, Client}}
+	end,
+	%io:format("Replica: sending requests to ~w ~n", [{?SERVER, Server}]),
 
     %?SERVER ! {request, {ClientProxy, UniqueRef, {Operation, Client}}},
     receive
         {response, {_, Result}} ->
-			io:format("applied "),
+			%io:format("applied "),
             {ok, Result}
     end.
     
 %%% Replica 
 start_link(LockApplication) ->
 	%timer:sleep(2000),
-	Leader = default_leader(),
-	io:format("Leader is ~w ~n", [Leader]),
+	Leader = leader_election(),
+	%io:format("Leader is ~w ~n", [Leader]),
     ReplicaState = #replica{application=LockApplication, leader=Leader},
-	SlotCommands = persister:load_saved_queue(),
-	io:format("start restoring SlotCommands ~w ~n", [SlotCommands]),
-	restore_slotcommands(SlotCommands, ReplicaState),
+	%SlotCommands = persister:load_saved_queue(),
+	%io:format("start restoring SlotCommands ~w ~n", [SlotCommands]),
+	%restore_slotcommands(SlotCommands, ReplicaState),
     Pid = spawn_link(fun() -> loop(ReplicaState) end),
     register(?SERVER, Pid),
-    %erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
+    erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
 
     {ok, Pid}.
 
@@ -56,59 +60,60 @@ stop() ->
     ?SERVER ! stop.
 
 loop(State) ->
-	io:format("start looping ~n"),
+	%io:format("start looping ~n"),
     receive
 		{nodedown, _} ->
-			io:format("New leader election ~n"),
+			%io:format("New leader election ~n"),
 			Leader = leader_election(),
 			NewState = #replica{leader=Leader},
 			loop(NewState);
 		{client_request, Command} ->
-			io:format("client req~n"),
+			%io:format("client req~n"),
 			{?SERVER, State#replica.leader} ! {server_request, Command},
 			loop(State);
         {server_request, Command} ->
-			io:format("server req~n"),
-			io:format("Replica proposing~n"),
+			%io:format("server req~n"),
+			%io:format("Replica proposing~n"),
 
 
             NewState = propose(Command, State),
-			io:format("Replica proposed~n"),
+			%io:format("Replica proposed~n"),
             loop(NewState);
         {decision, Slot, Command} ->
 
-			io:format("Replica got decision~n"),
+			%io:format("Replica got decision~n"),
 
             NewState = handle_decision(Slot, Command, State),
 			%persister:delete_election(Slot),
             loop(NewState);        
         gc_trigger ->
+			io:format("gc_trigger ~n"),
             NewState = gc_decisions(State),
             erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
             loop(NewState);
         stop ->
             ok
-    end,
-	io:format("end looping ~n").
+    end.
+	%io:format("end looping ~n").
 
 %%% Internals
 default_leader() ->
 	Config = file:consult("lockservice.config"),
 	{ok, [_, Nodes]} = Config,
-	io:format("Nodes are ~w ~n", [Nodes]),
+	%io:format("Nodes are ~w ~n", [Nodes]),
 	{nodes, NodeList} = Nodes,
 	[Leader|_] = NodeList,
 	Leader.
 
 leader_election() ->
-	io:format("Leader election start ~n"),
+	%io:format("Leader election start ~n"),
 	Config = file:consult("lockservice.config"),
 	{ok, [_, Nodes]} = Config,
-	io:format("Nodes are ~w ~n", [Nodes]),
+	%io:format("Nodes are ~w ~n", [Nodes]),
 	{nodes, NodeList} = Nodes,
-	io:format("Leader election start 1 ~n"),
+	%io:format("Leader election start 1 ~n"),
 	Leader = master:whois_leader(NodeList),
-	io:format("Leader election start 2 ~n"),
+	%io:format("Leader election start 2 ~n"),
 	erlang:monitor_node(Leader, true),
 	Leader.
 
@@ -118,6 +123,7 @@ gc_decisions(State) ->
         Slot >= CleanUpto
     end,
     CleanedDecisions = lists:filter(Pred, State#replica.decisions),
+	io:format("decisions gc ed"),
     State#replica{decisions = CleanedDecisions}.
 
 
@@ -128,14 +134,14 @@ gc_decisions(State) ->
 propose(Command, State) ->
     case is_command_already_decided(Command, State) of 
         false ->
-			io:format("New command proposed ~w  ~n", [Command]),
+			%io:format("New command proposed ~w  ~n", [Command]),
             Proposal = {slot_for_next_proposal(State), Command},
-			io:format("Proposal ready:~w~n",[Proposal]),
+			%io:format("Proposal ready:~w~n",[Proposal]),
 
             send_to_leaders(Proposal, State),
             add_proposal_to_state(Proposal, State);
         true ->
-			io:format("Already proposed ~w  ~n", [Command]),
+			%io:format("Already proposed ~w  ~n", [Command]),
             State
     end.
 
@@ -157,7 +163,7 @@ is_command_already_decided(Command, State) ->
     ).
 
 handle_decision(Slot, Command, State) ->
-	persister:persist_queue(Slot, Command),
+	%persister:persist_queue(Slot, Command),
 
     NewStateA = add_decision_to_state({Slot, Command}, State),
     consume_decisions(NewStateA).
@@ -184,7 +190,7 @@ consume_decisions(State) ->
     end.
 
 check_gc_acceptor(Slot) when Slot rem 300 == 0 ->
-    [acceptor:gc_this(Acceptor, node(), Slot) || 
+    [simple_acceptor:gc_this(Acceptor, node(), Slot) || 
         Acceptor <- master:get_acceptors()];
 check_gc_acceptor(_) ->
     noop.
@@ -207,23 +213,25 @@ handle_received_decision(Slot, DecidedCommand, State) ->
 
 %% carries out Command, unless it's already been performed by a previous decision
 perform({Operation, Client}=Command, State) ->
-	io:format("perform Command ~n"),
+	%io:format("perform Command ~n"),
     case has_command_already_been_performed(Command, State) of
         true -> % don't apply repeat messages
 			%io:format("already "),
             inc_slot_number(State);
         false -> % command not seen before, apply
             ResultFromFunction = (catch (State#replica.application):Operation(Client)),
-			io:format("apply Client ~w ~n", [Client]),
+			%io:format("apply Client ~w ~p ~n", [Client, State]),
             NewState = inc_slot_number(State),
+			%io:format("State updated ~n"),
 			{_, Name, Node} = Client,
-            {Name, Node} ! {response, {Operation, ResultFromFunction}},            
+            {Name, Node} ! {response, {Operation, ResultFromFunction}},
+			%io:format("Response sent out ~n"),
             NewState
     end.
 
 %% predicate: if exists an S : S < slot_num and {slot, command} in decisions
 has_command_already_been_performed(Command, State) ->
-	io:format("is Command applied ? ~w ~n", [Command]),
+	%io:format("is Command applied ? ~w ~n", [Command]),
     PastCmdMatcher = fun(
         {S, P}) -> 
             (P == Command) and (S < State#replica.slot_num)
@@ -234,7 +242,7 @@ inc_slot_number(State) ->
     State#replica{slot_num=State#replica.slot_num + 1}.
 
 add_decision_to_state(SlotCommand, State) ->
-	io:format(" Add dec to State SlotCommand ~w ~n", [SlotCommand]),
+	%io:format(" Add dec to State SlotCommand ~w ~n", [SlotCommand]),
     State#replica{ decisions = [SlotCommand | State#replica.decisions] }.
 
 add_proposal_to_state(Proposal, State) ->
@@ -250,6 +258,12 @@ send_to_leaders(Proposal, _State) ->
 restore_slotcommands([], _) -> ok;
 restore_slotcommands(SlotCommands, State) ->
 	[SlotCommand|RestSlotCommands] = SlotCommands,
-	io:format("Restore SlotCommand ~w ~n", [SlotCommand]),
+	%io:format("Restore SlotCommand ~w ~n", [SlotCommand]),
 	add_decision_to_state(SlotCommand, State),
 	restore_slotcommands(RestSlotCommands, State).
+
+read_mode() ->
+	Config = file:consult("mode.config"),
+	{ok, Tuple} = Config,
+	[{mode, Mode}] = Tuple,
+	Mode.
