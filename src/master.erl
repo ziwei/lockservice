@@ -82,7 +82,7 @@ handle_call(majority, _From, State) ->
 handle_call(get_acceptors, _From, State) ->
 	%%Modified!
 	%Reply = [{simple_acceptor, Node} || Node <- [node()|nodes()]],
-	io:format("Acceptors: ~w",[proplists:get_value(nodes, State#state.configuration)]),
+	%io:format("Acceptors: ~w",[proplists:get_value(nodes, State#state.configuration)]),
     Reply = [{simple_acceptor, Node} || Node <- [node()|proplists:get_value(nodes, State#state.configuration)]],
 	%io:format("Acceptors:~w~n",[Reply]),
     {reply, Reply, State}.
@@ -96,10 +96,10 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info({nodedown, Node}, State) ->
-    io:format("Lost node: ~p~n", [Node]),
+    %io:format("Lost node: ~p~n", [Node]),
     case length(master:get_acceptors()) < master:majority() of 
 	true ->
-	    io:format("FATAL: Insufficient majority.~n", []);
+	   io:format("FATAL: Insufficient majority.~n", []);
 	false ->
 	    ok
     end,
@@ -113,16 +113,18 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 whois_leader([]) ->
 	ok;
 whois_leader(Nodes) ->
-	io:format("Node ~w ~n" ,[Nodes]),
+	%io:format("Node ~w ~n" ,[Nodes]),
 	[Node|OtherNodes] = Nodes,
 	%io:format("Node ~w ~n" ,[Node]),
 	case net_adm:ping(Node) of
 		pang ->
 			whois_leader(OtherNodes);
 		pong ->
-			io:format(" Leader Node ~w ~n" ,[Node]),
+			%io:format(" Leader Node ~w ~n" ,[Node]),
 			Node
 	end.
+
+
 
 %%%===================================================================
 %%% Internal functions

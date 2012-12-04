@@ -4,7 +4,7 @@
 -module(lock).
 
 -behaviour(gen_server).
--export([acquire/2, release/2, get_queue/1]).
+-export([acquire/1, acquire/2, release/2, get_queue/1]).
 -export([start/0, start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 %%
 %% Include files
@@ -19,13 +19,16 @@
 %% API Functions
 %%
 start() ->
-	io:format("enter start link"),
+	%io:format("enter start link"),
 	gen_server:start({local, ?SERVER}, ?MODULE,[],[]).
 start_link() ->
-	io:format("enter start link"),
+	%io:format("enter start link"),
 	gen_server:start_link({local, ?SERVER}, ?MODULE,[],[]).
+acquire (Client) ->
+	%io:format("enter acq"), 	
+    gen_server:call(?SERVER, {acquire, Client}).
 acquire (Client, Server) ->
-	io:format("enter acq"), 	
+	%io:format("enter acq"), 	
     gen_server:call({?SERVER, Server}, {acquire, Client}).
 release (Client, Server) ->
     gen_server:call({?SERVER, Server}, {release, Client}).
@@ -35,7 +38,7 @@ get_queue(Server) ->
 %% Local Functions
 %%7
 init([])->
-	io:format("Lock init"),
+	%io:format("Lock init"),
 	{ok, #state{
         queue = queue:new()
     }}.
@@ -55,10 +58,10 @@ handle_call({release, Client}, _From, State) ->
 handle_acquire_req(Client, #state{queue=Queue}=State) ->
     NewQueue = queue:in(Client, Queue),
     NewState = State#state{queue=NewQueue},
-
+	{_, RegName, ClientNode} = Client,
     % if the queue was empty we can send out the lock
     case queue:is_empty(Queue) of
-        true -> comms(send_lock, Client, State);
+        true -> comms(send_lock, {RegName, ClientNode}, State);
         false -> noop
     end,
     NewState.
@@ -84,7 +87,7 @@ handle_release_req(_Client, State) ->
             State#state{queue=EmptyQueue}
     end.
 comms(_, Args, _) -> 
-	io:format("Target pid ~w", [Args]),
+	%io:format("Target pid ~w", [Args]),
      Args ! lock.
 
 %%%===================================================================
