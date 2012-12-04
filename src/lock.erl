@@ -61,14 +61,20 @@ handle_acquire_req(Client, #state{queue=Queue}=State) ->
     NewQueue = queue:in(Client, Queue),
 	NewState = State#state{queue=NewQueue},
 	{_, RegName, ClientNode} = Client,
+	Mode = read_lockmode(),
     % if the queue was empty we can send out the lock
     case queue:is_empty(Queue) of
         true -> comms(send_lock, {RegName, ClientNode}, State), NewState;
-        false -> noop, NewState
-			%io:format("NewQueue ~w ~n", [NewQueue]),
-			%send_lock(NewQueue, State),
-    		%EmptyState = State#state{queue=queue:new()},
-			%EmptyState
+        false -> 
+			case Mode of
+				1 ->
+					noop, NewState;
+				2 ->
+					%io:format("NewQueue ~w ~n", [NewQueue]),
+					send_lock(NewQueue, State),
+    				EmptyState = State#state{queue=queue:new()},
+					EmptyState
+			end
 	end.
 send_lock(Queue, State) -> 
 	case queue:out(Queue) of
@@ -106,6 +112,12 @@ handle_release_req(_Client, State) ->
 comms(_, Args, _) -> 
 	%io:format("Target pid ~w", [Args]),
      Args ! lock.
+
+read_lockmode() ->
+	Config = file:consult("lockmode.config"),
+	{ok, Tuple} = Config,
+	[{mode, Mode}] = Tuple,
+	Mode.
 
 %%%===================================================================
 %%% Uninteresting gen_server boilerplate
