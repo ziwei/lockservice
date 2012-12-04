@@ -41,3 +41,6 @@ request(N,Server, Name)->
 	io:format("lock finished ~n"),
 	request(N-1,Server, Name).
 
+stop()->
+	exit(whereis(?CLIENT), ok).
+
