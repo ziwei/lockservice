@@ -4,7 +4,7 @@
 -module(lock).
 
 -behaviour(gen_server).
--export([acquire/1, acquire/2, release/2, get_queue/1]).
+-export([acquire/1, acquire/2, release/1, release/2, get_queue/1]).
 -export([start/0, start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 %%
 %% Include files
@@ -30,6 +30,8 @@ acquire (Client) ->
 acquire (Client, Server) ->
 	%io:format("enter acq"), 	
     gen_server:call({?SERVER, Server}, {acquire, Client}).
+release (Client) ->
+    gen_server:call(?SERVER, {release, Client}).
 release (Client, Server) ->
     gen_server:call({?SERVER, Server}, {release, Client}).
 get_queue(Server) -> 
@@ -57,18 +59,31 @@ handle_call({release, Client}, _From, State) ->
 %% give them the lock if nobody else was waiting
 handle_acquire_req(Client, #state{queue=Queue}=State) ->
     NewQueue = queue:in(Client, Queue),
-    NewState = State#state{queue=NewQueue},
+	NewState = State#state{queue=NewQueue},
 	{_, RegName, ClientNode} = Client,
     % if the queue was empty we can send out the lock
     case queue:is_empty(Queue) of
-        true -> comms(send_lock, {RegName, ClientNode}, State);
-        false -> noop
-    end,
-    NewState.
-
+        true -> comms(send_lock, {RegName, ClientNode}, State), NewState;
+        false -> noop, NewState
+			%io:format("NewQueue ~w ~n", [NewQueue]),
+			%send_lock(NewQueue, State),
+    		%EmptyState = State#state{queue=queue:new()},
+			%EmptyState
+	end.
+send_lock(Queue, State) -> 
+	case queue:out(Queue) of
+		{{value, Client}, RestQueue} ->
+			%io:format("Client ~p ~n", [Client]),
+			{_, RegName, ClientNode} = Client,
+			comms(send_lock, {RegName, ClientNode}, State),
+			send_lock(RestQueue, State);
+		{empty, _} ->
+			ok
+	end.
 %% give the current lock holder from the queue
 %%  and give the lock to the next in queue (if any)
 handle_release_req(_Client, State) ->
+	%io:format("releasing ~n"),
     % release the lock, removing the queue head who held it
     case queue:out(State#state.queue) of
         % the lock was held
@@ -77,7 +92,9 @@ handle_release_req(_Client, State) ->
             case queue:peek(NewQueue) of
                 {value, NextLockHolder} -> 
                     % yes: send them the lock
-                    comms(send_lock, NextLockHolder, State);
+					{_, RegName, ClientNode} = NextLockHolder,
+					%io:format("Target ~w ~n", [{RegName, ClientNode}]),
+                    comms(send_lock, {RegName, ClientNode}, State);
                 empty -> 
                     % no: wait for the next request
                     ok
