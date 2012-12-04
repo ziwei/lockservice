@@ -57,3 +57,6 @@ read_mode() ->
 stop() ->
 	exit(whereis(?CLIENT), ok).
 
+stop()->
+	exit(whereis(?CLIENT), ok).
+

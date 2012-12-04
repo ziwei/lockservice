@@ -16,8 +16,7 @@
 request(Operation,Server, Client, Mode) ->
 	%io:format("Replica req1"),
     client_proxy(Operation, Server, Client, Mode),
-
-    ok.
+	ok.
 
 client_proxy(Operation, Server, Client, Mode) ->
     %ClientProxy = self(),
