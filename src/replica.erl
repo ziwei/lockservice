@@ -10,7 +10,7 @@
                   }).
 
 -define (SERVER, ?MODULE).
--define (GC_INTERVAL, 10000).
+-define (GC_INTERVAL, 20000).
 
 %%% Client API
 request(Operation,Server, Client, Mode) ->
@@ -70,10 +70,10 @@ loop(State) ->
 			%io:format("client req~n"),
 			{?SERVER, State#replica.leader} ! {server_request, Command},
 			loop(State);
-        {server_request, Command} ->
+        {server_request, From, Command} ->
 			%io:format("server req~n"),
 			%io:format("Replica proposing~n"),
-
+			From ! req_ack,
 
             NewState = propose(Command, State),
 			%io:format("Replica proposed~n"),
@@ -165,6 +165,9 @@ handle_decision(Slot, Command, State) ->
 	%persister:persist_queue(Slot, Command),
 
     NewStateA = add_decision_to_state({Slot, Command}, State),
+	{_, {Suffix}} = Command,
+	{_, Id, Client} = Suffix,
+	{Id, Client} ! req_inqueue,
     consume_decisions(NewStateA).
 
 %% Performs as many decided (queued) commands as possible
