@@ -90,8 +90,8 @@ loop(State) ->
 			From ! {slot_num, State#replica.slot_num},
 			loop(State);
         gc_trigger ->
-			io:format("gc_trigger ~n"),
-            NewState = spawn(fun() -> gc_decisions(State) end),
+			%io:format("gc_trigger ~n"),
+            NewState = gc_decisions(State),
             erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
             loop(NewState);
         stop ->
