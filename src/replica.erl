@@ -119,11 +119,11 @@ leader_election() ->
 	Leader.
 
 gc_decisions(State) ->
-	GetSlot = fun(Replica) -> Replica ! {gc_req, self()} end,
-	lists:foreach(GetSlot,master:get_replicas()),
-	%[spawn(fun() -> 
-   %     Replica ! {gc_req, self()} 
-   % end) || Replica <- master:get_replicas()],
+	%GetSlot = fun(Replica) -> Replica ! {gc_req, self()} end,
+	%lists:foreach(GetSlot,master:get_replicas()),
+	[spawn(fun() -> 
+        Replica ! {gc_req, self()} 
+    end) || Replica <- master:get_replicas()],
 	CleanUpto = get_min_slot_num(?REPLICAS, State#replica.slot_num),
     %CleanUpto = State#replica.slot_num - 200,
     Pred = fun({Slot, _Op}) ->
@@ -132,6 +132,7 @@ gc_decisions(State) ->
     CleanedDecisions = lists:filter(Pred, State#replica.decisions),
 	io:format("clean up to ~w ",[CleanUpto]),
     State#replica{decisions = CleanedDecisions}.
+
 get_min_slot_num(0, Num) ->
 	Num;
 get_min_slot_num(R, Num) ->
@@ -140,9 +141,9 @@ get_min_slot_num(R, Num) ->
 			io:format("****Receive slot number****: ~w ~n",[NewNum]),
 			get_min_slot_num(R-1, min(Num, NewNum))
 	after 
-		1000 ->
+		100 ->
 			io:format("****timeout!****~n"),
-			1%get_min_slot_num(0, Num)
+			get_min_slot_num(0, Num)
 	end.
 
 
@@ -166,10 +167,11 @@ propose(Command, State) ->
     end.
 
 %% returns the next available command sequence slot, using the local replica's state
-slot_for_next_proposal(#replica{proposals=Proposals, decisions=Decisions}) ->
+slot_for_next_proposal(#replica{proposals=Proposals, decisions=Decisions, slot_num=SlotNum}) ->
     MaxSlotFn = fun({Slot, _Command}, Highest) -> max(Slot, Highest) end,
     MaxPropSlot = lists:foldl(MaxSlotFn, 0, Proposals),
     HighSlot = lists:foldl(MaxSlotFn, MaxPropSlot, Decisions),
+	HighSlot = max(HighSlot, SlotNum),
     1 + HighSlot.
 
 %% predicate returning true/false 
