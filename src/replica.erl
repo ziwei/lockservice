@@ -244,8 +244,8 @@ perform({Operation, Client}=Command, State) ->
 			io:format("apply Client ~w ~p ~n", [Client, State]),
             NewState = inc_slot_number(State),
 			%io:format("State updated ~n"),
-			{_, Name, Node} = Client,
-            {Name, Node} ! {response, {Operation, ResultFromFunction}},
+			%{_, Name, Node} = Client,
+            %{Name, Node} ! {response, {Operation, ResultFromFunction}},
 			%io:format("Response sent out ~n"),
             NewState
     end.
