@@ -44,7 +44,7 @@ client_proxy(Operation, Server, Client, Mode) ->
 %%% Replica 
 start_link(LockApplication) ->
 	%timer:sleep(2000),
-	Leader = leader_election(),
+	Leader = default_leader(),
 	%io:format("Leader is ~w ~n", [Leader]),
     ReplicaState = #replica{application=LockApplication, leader=Leader},
 	%SlotCommands = persister:load_saved_queue(),
@@ -52,7 +52,7 @@ start_link(LockApplication) ->
 	%restore_slotcommands(SlotCommands, ReplicaState),
     Pid = spawn_link(fun() -> loop(ReplicaState) end),
     register(?SERVER, Pid),
-    erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
+    %erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
 
     {ok, Pid}.
 
@@ -140,7 +140,7 @@ get_min_slot_num(R, Num) ->
 			get_min_slot_num(R-1, min(Num, NewNum))
 	after 
 		1000 ->
-			get_min_slot_num(0, Num)
+			1
 	end.
 
 
