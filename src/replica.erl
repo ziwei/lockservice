@@ -68,28 +68,27 @@ loop(State) ->
 			NewState = #replica{leader=Leader},
 			loop(NewState);
 		{client_request, Command} ->
-			io:format("client req~n"),
+			%io:format("client req~n"),
 			{?SERVER, State#replica.leader} ! {server_request, Command},
 			loop(State);
         {server_request, Command} -> %From, 
-			io:format("server req~n"),
+			%io:format("server req~n"),
 			%io:format("Replica proposing~n"),
 
             NewState = propose(Command, State),
-			io:format("Replica proposed~n"),
+			%io:format("Replica proposed~n"),
             loop(NewState);
         {decision, Slot, Command} ->
-
-			io:format("Got decision ~w ~n",[Slot]),
-
+			io:format("Decision ~w",[Slot]),
             NewState = handle_decision(Slot, Command, State),
 			%persister:delete_election(Slot),
             loop(NewState);        
 		{gc_req, From} ->
 			From ! {slot_num, State#replica.slot_num},
+			io:format("Receive gc_req ~n"),
 			loop(State);
         gc_trigger ->
-			io:format("gc_trigger ~n"),
+			io:format("~n********start garbage collection********~n"),
             NewState = gc_decisions(State),
             erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
             loop(NewState);
@@ -120,9 +119,11 @@ leader_election() ->
 	Leader.
 
 gc_decisions(State) ->
-	[spawn(fun() -> 
-        Replica ! {gc_req, self()} 
-    end) || Replica <- master:get_replicas()],
+	GetSlot = fun(Replica) -> Replica ! {gc_req, self()} end,
+	lists:foreach(GetSlot,master:get_replicas()),
+	%[spawn(fun() -> 
+   %     Replica ! {gc_req, self()} 
+   % end) || Replica <- master:get_replicas()],
 	CleanUpto = get_min_slot_num(?REPLICAS, State#replica.slot_num),
     %CleanUpto = State#replica.slot_num - 200,
     Pred = fun({Slot, _Op}) ->
@@ -136,11 +137,12 @@ get_min_slot_num(0, Num) ->
 get_min_slot_num(R, Num) ->
 	receive
 		{slot_num, NewNum} ->
-			io:format("Received slot number: ~w ~n",[NewNum]),
+			io:format("****Receive slot number****: ~w ~n",[NewNum]),
 			get_min_slot_num(R-1, min(Num, NewNum))
 	after 
 		1000 ->
-			get_min_slot_num(0, Num)
+			io:format("****timeout!****~n"),
+			1%get_min_slot_num(0, Num)
 	end.
 
 
