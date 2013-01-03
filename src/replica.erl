@@ -122,8 +122,8 @@ leader_election() ->
 
 gc_decisions(State) ->
 	[spawn(fun() -> 
-        Acceptor ! {gc_req, self()} 
-    end) || Acceptor <- master:get_acceptors()],
+        Replica ! {gc_req, self()} 
+    end) || Replica <- master:get_replicas()],
 	CleanUpto = get_min_slot_num(?REPLICAS, State#replica.slot_num),
     %CleanUpto = State#replica.slot_num - 200,
     Pred = fun({Slot, _Op}) ->
