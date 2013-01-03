@@ -109,14 +109,14 @@ default_leader() ->
 	Leader.
 
 leader_election() ->
-	%io:format("Leader election start ~n"),
+	io:format("Leader election start ~n"),
 	Config = file:consult("lockservice.config"),
 	{ok, [_, Nodes]} = Config,
-	%io:format("Nodes are ~w ~n", [Nodes]),
+	io:format("Nodes are ~w ~n", [Nodes]),
 	{nodes, NodeList} = Nodes,
 	%io:format("Leader election start 1 ~n"),
 	Leader = master:whois_leader(NodeList),
-	%io:format("Leader election start 2 ~n"),
+	io:format("Leader is ~w ~n",[Leader]),
 	erlang:monitor_node(Leader, true),
 	Leader.
 

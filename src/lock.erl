@@ -83,7 +83,7 @@ handle_acquire_req(Client, #state{queue=Queue}=State) ->
 			%end
 			end;
 		true -> 
-			io:format("it is distributed lock service~n"),
+			io:format("it is centric lock service~n"),
 			case queue:is_empty(Queue) of
         		true -> comms(send_lock, Client, State), NewState;
       		  	false -> 
