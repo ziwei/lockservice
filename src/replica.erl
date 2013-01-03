@@ -129,13 +129,14 @@ gc_decisions(State) ->
         Slot >= CleanUpto
     end,
     CleanedDecisions = lists:filter(Pred, State#replica.decisions),
-	io:format("clean up to ~w",[CleanUpto]),
+	io:format("clean up to ~w ",[CleanUpto]),
     State#replica{decisions = CleanedDecisions}.
 get_min_slot_num(0, Num) ->
 	Num;
 get_min_slot_num(R, Num) ->
 	receive
 		{slot_num, NewNum} ->
+			io:format("Received slot number: ~w ~n",[NewNum]),
 			get_min_slot_num(R-1, min(Num, NewNum))
 	after 
 		1000 ->

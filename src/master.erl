@@ -72,6 +72,8 @@ init([]) ->
                  {replicas, ?DEFAULT_REPLICAS},
                  {nodes, []}]
         end,
+	
+	
     InitialState = #state{configuration = Configuration},
 
     % ping nodes from configuration
