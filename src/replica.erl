@@ -11,6 +11,7 @@
 
 -define (SERVER, ?MODULE).
 -define (GC_INTERVAL, 20000).
+-define (REPLICAS, 3).
 
 %%% Client API
 request(Operation,Server, Client, Mode) ->
@@ -70,10 +71,10 @@ loop(State) ->
 			%io:format("client req~n"),
 			{?SERVER, State#replica.leader} ! {server_request, Command},
 			loop(State);
-        {server_request, From, Command} ->
+        {server_request, Command} -> %From, 
 			%io:format("server req~n"),
 			%io:format("Replica proposing~n"),
-			From ! req_ack,
+			%From ! req_ack,
 
             NewState = propose(Command, State),
 			%io:format("Replica proposed~n"),
@@ -85,6 +86,9 @@ loop(State) ->
             NewState = handle_decision(Slot, Command, State),
 			%persister:delete_election(Slot),
             loop(NewState);        
+		{gc_req, From} ->
+			From ! {slot_num, State#replica.slot_num},
+			loop(State);
         gc_trigger ->
 			io:format("gc_trigger ~n"),
             NewState = gc_decisions(State),
@@ -117,13 +121,28 @@ leader_election() ->
 	Leader.
 
 gc_decisions(State) ->
-    CleanUpto = State#replica.slot_num - 200,
+	[spawn(fun() -> 
+        Acceptor ! {gc_req, self()} 
+    end) || Acceptor <- master:get_acceptors()],
+	CleanUpto = get_min_slot_num(?REPLICAS, State#replica.slot_num),
+    %CleanUpto = State#replica.slot_num - 200,
     Pred = fun({Slot, _Op}) ->
         Slot >= CleanUpto
     end,
     CleanedDecisions = lists:filter(Pred, State#replica.decisions),
 	io:format("decisions gc ed"),
     State#replica{decisions = CleanedDecisions}.
+get_min_slot_num(0, Num) ->
+	Num;
+get_min_slot_num(R, Num) ->
+	receive
+		{slot_num, NewNum} ->
+			get_min_slot_num(R-1, min(Num, NewNum))
+	after 
+		1000 ->
+			get_min_slot_num(0, Num)
+	end.
+
 
 
 %% Push the command into the replica command queue
@@ -165,9 +184,9 @@ handle_decision(Slot, Command, State) ->
 	%persister:persist_queue(Slot, Command),
 
     NewStateA = add_decision_to_state({Slot, Command}, State),
-	{_, {Suffix}} = Command,
-	{_, Id, Client} = Suffix,
-	{Id, Client} ! req_inqueue,
+	%{_, {Suffix}} = Command,
+	%{_, Id, Client} = Suffix,
+	%{Id, Client} ! req_inqueue,
     consume_decisions(NewStateA).
 
 %% Performs as many decided (queued) commands as possible

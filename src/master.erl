@@ -7,6 +7,7 @@
 -export([
 	 start_link/0, 
 	 get_acceptors/0,
+	 get_replicas/0,
          majority/0,
          replicas/0,
 	 whois_leader/1,
@@ -47,6 +48,9 @@ replicas() ->
 get_acceptors() ->
     gen_server:call(?SERVER, get_acceptors).
 
+get_replicas() ->
+    gen_server:call(?SERVER, get_replicas).
+
 stop() ->
     gen_server:cast(?SERVER, stop).
 
@@ -79,6 +83,9 @@ handle_call(replicas, _From, State) ->
     {reply, proplists:get_value(replicas, State#state.configuration), State};
 handle_call(majority, _From, State) ->
     {reply, proplists:get_value(majority, State#state.configuration), State};
+handle_call(get_replicas, _From, State) ->
+	Reply = [{replica, Node} || Node <- [node()|proplists:get_value(nodes, State#state.configuration)]],
+	{reply, Reply, State};
 handle_call(get_acceptors, _From, State) ->
 	%%Modified!
 	%Reply = [{simple_acceptor, Node} || Node <- [node()|nodes()]],
