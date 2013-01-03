@@ -44,8 +44,11 @@ client_proxy(Operation, Server, Client, Mode) ->
 %%% Replica 
 start_link(LockApplication) ->
 	%timer:sleep(2000),
+<<<<<<< HEAD
+	Leader = default_leader(),
+=======
 	Leader = default_leader(),%leader_election(),
-
+>>>>>>> 100f0ab16bd9ce62a240c2d3e338f665f4b1c704
 	%io:format("Leader is ~w ~n", [Leader]),
     ReplicaState = #replica{application=LockApplication, leader=Leader},
 	%SlotCommands = persister:load_saved_queue(),
@@ -142,8 +145,12 @@ get_min_slot_num(R, Num) ->
 			get_min_slot_num(R-1, min(Num, NewNum))
 	after 
 		1000 ->
+<<<<<<< HEAD
+			1
+=======
 			io:format("****timeout!****~n"),
 			1%get_min_slot_num(0, Num)
+>>>>>>> 100f0ab16bd9ce62a240c2d3e338f665f4b1c704
 	end.
 
 
