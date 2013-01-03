@@ -68,7 +68,7 @@ loop(State) ->
 			NewState = #replica{leader=Leader},
 			loop(NewState);
 		{client_request, Command} ->
-			%io:format("client req~n"),
+			io:format("client req~n"),
 			{?SERVER, State#replica.leader} ! {server_request, Command},
 			loop(State);
         {server_request, Command} -> %From, 
@@ -77,11 +77,11 @@ loop(State) ->
 			%From ! req_ack,
 
             NewState = propose(Command, State),
-			%io:format("Replica proposed~n"),
+			io:format("Replica proposed~n"),
             loop(NewState);
         {decision, Slot, Command} ->
 
-			%io:format("Replica got decision~n"),
+			io:format("Replica got decision~n"),
 
             NewState = handle_decision(Slot, Command, State),
 			%persister:delete_election(Slot),
@@ -152,14 +152,14 @@ get_min_slot_num(R, Num) ->
 propose(Command, State) ->
     case is_command_already_decided(Command, State) of 
         false ->
-			%io:format("New command proposed ~w  ~n", [Command]),
+			io:format("New command proposed ~w  ~n", [Command]),
             Proposal = {slot_for_next_proposal(State), Command},
-			%io:format("Proposal ready:~w~n",[Proposal]),
+			io:format("Proposal ready:~w~n",[Proposal]),
 
             send_to_leaders(Proposal, State),
             add_proposal_to_state(Proposal, State);
         true ->
-			%io:format("Already proposed ~w  ~n", [Command]),
+			io:format("Already proposed ~w  ~n", [Command]),
             State
     end.
 
@@ -196,7 +196,7 @@ handle_decision(Slot, Command, State) ->
 %% returns: updated state, with changes to application, slot_number, and the command queues
 consume_decisions(State) ->
     Slot = State#replica.slot_num,
-	%io:format("consuming ~w", [Slot]),
+	%o:format("consuming ~w", [Slot]),
     case lists:keyfind(Slot, 1, State#replica.decisions) of
         false ->
 			%io:format("not here "),
@@ -237,11 +237,11 @@ perform({Operation, Client}=Command, State) ->
 	%io:format("perform Command ~n"),
     case has_command_already_been_performed(Command, State) of
         true -> % don't apply repeat messages
-			%io:format("already "),
+			io:format("already "),
             inc_slot_number(State);
         false -> % command not seen before, apply
             ResultFromFunction = (catch (State#replica.application):Operation(Client)),
-			%io:format("apply Client ~w ~p ~n", [Client, State]),
+			io:format("apply Client ~w ~p ~n", [Client, State]),
             NewState = inc_slot_number(State),
 			%io:format("State updated ~n"),
 			{_, Name, Node} = Client,
@@ -252,7 +252,7 @@ perform({Operation, Client}=Command, State) ->
 
 %% predicate: if exists an S : S < slot_num and {slot, command} in decisions
 has_command_already_been_performed(Command, State) ->
-	%io:format("is Command applied ? ~w ~n", [Command]),
+	io:format("is Command applied ? ~w ~n", [Command]),
     PastCmdMatcher = fun(
         {S, P}) -> 
             (P == Command) and (S < State#replica.slot_num)
@@ -263,7 +263,7 @@ inc_slot_number(State) ->
     State#replica{slot_num=State#replica.slot_num + 1}.
 
 add_decision_to_state(SlotCommand, State) ->
-	%io:format(" Add dec to State SlotCommand ~w ~n", [SlotCommand]),
+	io:format(" Add dec to State SlotCommand ~w ~n", [SlotCommand]),
     State#replica{ decisions = [SlotCommand | State#replica.decisions] }.
 
 add_proposal_to_state(Proposal, State) ->
