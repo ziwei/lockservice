@@ -62,6 +62,7 @@ handle_acquire_req(Client, #state{queue=Queue}=State) ->
 	NewState = State#state{queue=NewQueue},
 	case is_pid(Client) of
 		false ->
+			io:format("it is distributed lock service~n"),
 			{_, RegName, ClientNode} = Client,
 	%Mode = read_lockmode(),
     % if the queue was empty we can send out the lock
@@ -82,6 +83,7 @@ handle_acquire_req(Client, #state{queue=Queue}=State) ->
 			%end
 			end;
 		true -> 
+			io:format("it is distributed lock service~n"),
 			case queue:is_empty(Queue) of
         		true -> comms(send_lock, Client, State), NewState;
       		  	false -> 
@@ -111,9 +113,14 @@ handle_release_req(_Client, State) ->
             case queue:peek(NewQueue) of
                 {value, NextLockHolder} -> 
                     % yes: send them the lock
-					{_, RegName, ClientNode} = NextLockHolder,
-					%io:format("Target ~w ~n", [{RegName, ClientNode}]),
-                    comms(send_lock, {RegName, ClientNode}, State);
+					case is_pid(NextLockHolder) of
+						false ->
+							{_, RegName, ClientNode} = NextLockHolder,
+							%io:format("Target ~w ~n", [{RegName, ClientNode}]),
+                    		comms(send_lock, {RegName, ClientNode}, State);
+						true ->
+							comms(send_lock, NextLockHolder, State)
+					end;
                 empty -> 
                     % no: wait for the next request
                     ok
