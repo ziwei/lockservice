@@ -62,7 +62,7 @@ handle_acquire_req(Client, #state{queue=Queue}=State) ->
 	NewState = State#state{queue=NewQueue},
 	case is_pid(Client) of
 		false ->
-			io:format("it is distributed lock service~n"),
+			%io:format("it is distributed lock service~n"),
 			{_, RegName, ClientNode} = Client,
 	%Mode = read_lockmode(),
     % if the queue was empty we can send out the lock
@@ -83,7 +83,7 @@ handle_acquire_req(Client, #state{queue=Queue}=State) ->
 			%end
 			end;
 		true -> 
-			io:format("it is centric lock service~n"),
+			%io:format("it is centric lock service~n"),
 			case queue:is_empty(Queue) of
         		true -> comms(send_lock, Client, State), NewState;
       		  	false -> 
