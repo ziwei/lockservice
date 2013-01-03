@@ -60,15 +60,17 @@ handle_call({release, Client}, _From, State) ->
 handle_acquire_req(Client, #state{queue=Queue}=State) ->
     NewQueue = queue:in(Client, Queue),
 	NewState = State#state{queue=NewQueue},
-	{_, RegName, ClientNode} = Client,
+	case is_pid(Client) of
+		false ->
+			{_, RegName, ClientNode} = Client,
 	%Mode = read_lockmode(),
     % if the queue was empty we can send out the lock
 	%io:format("ready to send lock ~n"),
 	%comms(send_lock, {RegName, ClientNode}, State), 
 	%NewState.
-    case queue:is_empty(Queue) of
-        true -> comms(send_lock, {RegName, ClientNode}, State), NewState;
-        false -> 
+    		case queue:is_empty(Queue) of
+        		true -> comms(send_lock, {RegName, ClientNode}, State), NewState;
+      		  	false -> 
 			%case Mode of
 				%1 ->
 					noop, NewState
@@ -78,7 +80,15 @@ handle_acquire_req(Client, #state{queue=Queue}=State) ->
 %%     				EmptyState = State#state{queue=queue:new()},
 %% 					EmptyState
 			%end
+			end;
+		true -> 
+			case queue:is_empty(Queue) of
+        		true -> comms(send_lock, Client, State), NewState;
+      		  	false -> 
+					noop, NewState
+			end
 	end.
+
 send_lock(Queue, State) -> 
 	case queue:out(Queue) of
 		{{value, Client}, RestQueue} ->
