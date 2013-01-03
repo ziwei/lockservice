@@ -84,10 +84,6 @@ loop(State) ->
             NewState = handle_decision(Slot, Command, State),
 			%persister:delete_election(Slot),
             loop(NewState);        
-		{gc_req, From} ->
-			From ! {slot_num, State#replica.slot_num},
-			io:format("Receive gc_req ~n"),
-			loop(State);
         gc_trigger ->
 			io:format("~n********start garbage collection********~n"),
             NewState = gc_decisions(State),
@@ -139,7 +135,11 @@ get_min_slot_num(R, Num) ->
 	receive
 		{slot_num, NewNum} ->
 			io:format("****Receive slot number****: ~w ~n",[NewNum]),
-			get_min_slot_num(R-1, min(Num, NewNum))
+			get_min_slot_num(R-1, min(Num, NewNum));
+		{gc_req, From} ->
+			From ! {slot_num, Num},
+			io:format("Receive gc_req ~n"),
+			get_min_slot_num(R, Num)
 	after 
 		1000 ->
 			io:format("****timeout!****~n"),
