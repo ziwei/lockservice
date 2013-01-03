@@ -44,7 +44,7 @@ client_proxy(Operation, Server, Client, Mode) ->
 %%% Replica 
 start_link(LockApplication) ->
 	%timer:sleep(2000),
-	Leader = leader_election(),
+	Leader = default_leader(),%leader_election(),
 	%io:format("Leader is ~w ~n", [Leader]),
     ReplicaState = #replica{application=LockApplication, leader=Leader},
 	%SlotCommands = persister:load_saved_queue(),
@@ -68,20 +68,19 @@ loop(State) ->
 			NewState = #replica{leader=Leader},
 			loop(NewState);
 		{client_request, Command} ->
-			%io:format("client req~n"),
+			io:format("client req~n"),
 			{?SERVER, State#replica.leader} ! {server_request, Command},
 			loop(State);
         {server_request, Command} -> %From, 
-			%io:format("server req~n"),
+			io:format("server req~n"),
 			%io:format("Replica proposing~n"),
-			%From ! req_ack,
 
             NewState = propose(Command, State),
-			%io:format("Replica proposed~n"),
+			io:format("Replica proposed~n"),
             loop(NewState);
         {decision, Slot, Command} ->
 
-			%io:format("Replica got decision~n"),
+			io:format("Got decision ~w ~n",[Slot]),
 
             NewState = handle_decision(Slot, Command, State),
 			%persister:delete_election(Slot),
@@ -90,7 +89,7 @@ loop(State) ->
 			From ! {slot_num, State#replica.slot_num},
 			loop(State);
         gc_trigger ->
-			%io:format("gc_trigger ~n"),
+			io:format("gc_trigger ~n"),
             NewState = gc_decisions(State),
             erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
             loop(NewState);
@@ -130,7 +129,7 @@ gc_decisions(State) ->
         Slot >= CleanUpto
     end,
     CleanedDecisions = lists:filter(Pred, State#replica.decisions),
-	%io:format("decisions gc ed"),
+	io:format("clean up to ~w",[CleanUpto]),
     State#replica{decisions = CleanedDecisions}.
 get_min_slot_num(0, Num) ->
 	Num;
