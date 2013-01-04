@@ -244,7 +244,10 @@ perform({Operation, Client}=Command, State) ->
 			%io:format("already "),
             inc_slot_number(State);
         false -> % command not seen before, apply
-            ResultFromFunction = (catch (State#replica.application):Operation(Client)),
+			case is_command_self_proposed(Command, State) of
+				true ->
+            		ResultFromFunction = (catch (State#replica.application):Operation(Client))
+			end,
 			%io:format("apply Client ~w ~p ~n", [Client, State]),
             NewState = inc_slot_number(State),
 			%io:format("State updated ~n"),
@@ -255,6 +258,14 @@ perform({Operation, Client}=Command, State) ->
     end.
 
 %% predicate: if exists an S : S < slot_num and {slot, command} in decisions
+is_command_self_proposed(Command, State) ->
+	%io:format("is Command applied ? ~w ~n", [Command]),
+    ProCmdMatcher = fun(
+        {_, P}) -> 
+            (P == Command)
+    end,
+    lists:any(ProCmdMatcher, State#replica.proposals).
+
 has_command_already_been_performed(Command, State) ->
 	%io:format("is Command applied ? ~w ~n", [Command]),
     PastCmdMatcher = fun(
