@@ -158,9 +158,13 @@ awaiting_accepts({accepted, Round, _Value}, #state{round=Round}=State) ->
         false ->
             {next_state, awaiting_accepts, NewState};
         true -> % deliver result to coordinator (its replica module)           
-            NewState#state.reply_to ! {decision, 
+            %NewState#state.reply_to ! {decision, 
+                                       %State#state.election, 
+                                       %State#state.value#proposal.value},
+			[spawn(fun() -> Replica ! {decision, 
                                        State#state.election, 
-                                       State#state.value#proposal.value},
+                                       State#state.value#proposal.value} 
+    end) || Replica <- master:get_replicas()],
             {stop, normal, NewState}
     end;
 
