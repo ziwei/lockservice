@@ -1,5 +1,0 @@
--record(state, 
-	{
-	  subscribers = [],
-          configuration = []
-	}).
