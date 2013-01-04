@@ -1,6 +1,6 @@
 #!/bin/sh
 
-for i in 3 4 5
+for i in 1 2 3 4 5
 do
 
 echo "Executing '$1' on lakka-$i.it.kth.se"

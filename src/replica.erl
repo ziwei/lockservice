@@ -53,7 +53,7 @@ start_link(LockApplication) ->
 	%restore_slotcommands(SlotCommands, ReplicaState),
     Pid = spawn_link(fun() -> loop(ReplicaState) end),
     register(?SERVER, Pid),
-    %erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
+    erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
 
     {ok, Pid}.
 
@@ -68,6 +68,11 @@ loop(State) ->
 			Leader = leader_election(),
 			NewState = #replica{leader=Leader},
 			loop(NewState);
+		gc_trigger ->
+			io:format("~n********start garbage collection********~n"),
+            NewState = gc_decisions(State),
+            erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
+            loop(NewState);
 		{client_request, Command} ->
 			%io:format("client req~n"),
 			{?SERVER, State#replica.leader} ! {server_request, Command},
@@ -80,15 +85,10 @@ loop(State) ->
 			%io:format("Replica proposed~n"),
             loop(NewState);
         {decision, Slot, Command} ->
-			io:format("Decision ~w",[Slot]),
+			%io:format("Decision ~w",[Slot]),
             NewState = handle_decision(Slot, Command, State),
 			%persister:delete_election(Slot),
             loop(NewState);        
-        gc_trigger ->
-			io:format("~n********start garbage collection********~n"),
-            NewState = gc_decisions(State),
-            erlang:send_after(?GC_INTERVAL, replica, gc_trigger),
-            loop(NewState);
         stop ->
             ok
     end.
@@ -121,7 +121,7 @@ gc_decisions(State) ->
 	[spawn(fun() -> 
         Replica ! {gc_req, self()} 
     end) || Replica <- master:get_replicas()],
-	CleanUpto = get_min_slot_num(?REPLICAS, State#replica.slot_num),
+	CleanUpto = get_min_slot_num(?REPLICAS, State#replica.slot_num) -100,
     %CleanUpto = State#replica.slot_num - 200,
     Pred = fun({Slot, _Op}) ->
         Slot >= CleanUpto
@@ -168,12 +168,11 @@ propose(Command, State) ->
     end.
 
 %% returns the next available command sequence slot, using the local replica's state
-slot_for_next_proposal(#replica{proposals=Proposals, decisions=Decisions, slot_num=SlotNum}) ->
+slot_for_next_proposal(#replica{proposals=Proposals, decisions=Decisions}) ->
     MaxSlotFn = fun({Slot, _Command}, Highest) -> max(Slot, Highest) end,
     MaxPropSlot = lists:foldl(MaxSlotFn, 0, Proposals),
     HighSlot = lists:foldl(MaxSlotFn, MaxPropSlot, Decisions),
-	HighSlot = max(HighSlot, SlotNum),
-    1 + HighSlot.
+	1 + HighSlot.
 
 %% predicate returning true/false 
 %% whether the command has already been decided and applied to the replica state

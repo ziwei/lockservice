@@ -15,7 +15,7 @@ APP=lockservice
 ./execute.sh "cd $APP && ./rebar compile" > /dev/null
 ./execute.sh "cd $APP && ./rebar generate"
 ./execute.sh "$APP/rel/$APP/bin/$APP stop"
-./execute.sh "$APP/rel/$APP/bin/$APP start"
+#./execute.sh "$APP/rel/$APP/bin/$APP start"
 
 
 #Start client
